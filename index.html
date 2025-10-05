@@ -1,423 +1,869 @@
 <!DOCTYPE html>
-<html lang="pt-BR" dir="ltr" class="scroll-smooth">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trabalho Bimestral – Química Ambiental</title>
-    
-    <!-- SEO Avançado -->
-    <meta name="description" content="Estudo aprofundado de Química Ambiental sobre os principais problemas: chuva ácida, efeito estufa, camada de ozônio e metais pesados. Causas, consequências e soluções.">
-    <meta name="keywords" content="química ambiental, chuva ácida, efeito estufa, camada de ozônio, metais pesados, meio ambiente, trabalho escolar, química, sustentabilidade, aquecimento global">
+    <title>AudioPhile - Seu Web Player Moderno</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1DB954"/>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- Google Fonts (Poppins) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Custom CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+
     <style>
         body {
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .scroll-animate {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-        }
-        .scroll-animate.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        .hero-overlay::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1;
-            transition: background-color 0.5s ease;
-        }
-        .hero-overlay:hover::before {
-             background-color: rgba(0, 0, 0, 0.4);
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            color: #e5e5e5;
         }
 
-        #back-to-top-btn {
-            transform: scale(0.8);
-            opacity: 0;
-            visibility: hidden;
-            transition: transform 0.4s ease, opacity 0.4s ease, visibility 0.4s;
+        #app-background {
+            position: fixed;
+            top: -10px; left: -10px;
+            width: calc(100% + 20px);
+            height: calc(100% + 20px);
+            background-size: cover;
+            background-position: center;
+            filter: blur(20px) brightness(0.4);
+            transition: background-image 0.7s ease-in-out;
+            z-index: -1;
         }
-        #back-to-top-btn.show {
+        
+        #progress-bar {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            cursor: pointer;
+            outline: none;
+            border-radius: 15px;
+            height: 18px; 
+            background: transparent;
+        }
+
+        #progress-bar::-webkit-slider-runnable-track {
+            height: 4px;
+            background: linear-gradient(to right, #1DB954 var(--progress-percent, 0%), rgba(255, 255, 255, 0.2) var(--progress-percent, 0%));
+            border-radius: 15px;
+            transition: height 0.2s ease-in-out;
+        }
+        #progress-bar::-moz-range-track {
+            height: 4px;
+            background: linear-gradient(to right, #1DB954 var(--progress-percent, 0%), rgba(255, 255, 255, 0.2) var(--progress-percent, 0%));
+            border-radius: 15px;
+            transition: height 0.2s ease-in-out;
+        }
+
+        #progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #e5e5e5;
+            border-radius: 50%;
+            border: none;
+            margin-top: -6px; 
+            transition: transform 0.2s ease-in-out, background 0.2s ease-in-out;
+            transform: scale(0); 
+        }
+         #progress-bar::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #e5e5e5;
+            border-radius: 50%;
+            border: none;
+            transition: transform 0.2s ease-in-out, background 0.2s ease-in-out;
+            transform: scale(0);
+        }
+
+        .progress-container:hover #progress-bar::-webkit-slider-runnable-track {
+            height: 6px;
+        }
+        .progress-container:hover #progress-bar::-webkit-slider-thumb {
+            transform: scale(1); 
+            margin-top: -5px; 
+        }
+         .progress-container:hover #progress-bar::-moz-range-track {
+            height: 6px;
+        }
+        .progress-container:hover #progress-bar::-moz-range-thumb {
             transform: scale(1);
-            opacity: 1;
-            visibility: visible;
         }
 
-        /* Fix para ancoragem com header/nav */
-        article, section {
-            scroll-margin-top: 4rem; 
+        #progress-bar:active::-webkit-slider-thumb,
+        #progress-bar:focus::-webkit-slider-thumb {
+             background: #1DB954;
+        }
+        #progress-bar:active::-moz-range-thumb,
+        #progress-bar:focus::-moz-range-thumb {
+             background: #1DB954;
+        }
+        
+        .view {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto;
+            padding-bottom: 128px;
+        }
+        .view:not(.active) {
+            opacity: 0;
+            transform: scale(0.98);
+            pointer-events: none;
+        }
+        
+        .repeat-mode-one::after {
+            content: '1';
+            position: absolute;
+            top: -2px; right: -4px;
+            font-size: 9px;
+            font-weight: bold;
+            background-color: #1DB954;
+            color: #121212;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            line-height: 12px;
+            text-align: center;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+        .modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
         }
 
-        blockquote {
-            font-style: italic;
-            border-left-width: 4px;
+        @keyframes nav-icon-bounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.85); }
+            100% { transform: scale(1); }
+        }
+        .nav-icon-bounce {
+            animation: nav-icon-bounce 0.3s ease-in-out;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-gray-800 dark:bg-slate-900 dark:text-slate-300 transition-colors duration-300">
-    
-    <!-- Watermark -->
-    <div class="fixed inset-0 flex items-center justify-center z-0 pointer-events-none">
-        <span class="text-[10vw] md:text-8xl font-black text-slate-200/50 dark:text-slate-700/50 transform -rotate-45 select-none transition-colors">
-            Mateus Henrique<p>Gabriel Carramão</p>
-        </span>
-    </div>
+<body class="bg-black antialiased overflow-hidden">
 
-    <!-- Header e Hero Section -->
-    <header class="relative h-[60vh] md:h-[70vh] bg-cover bg-center text-white hero-overlay" style="background-image: url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2071&auto=format&fit=crop');" role="img" aria-label="Floresta densa vista de cima, simbolizando a riqueza do meio ambiente.">
-        <div class="relative z-10 h-full flex flex-col">
-            <!-- Navigation -->
-            <nav class="container mx-auto px-6 py-4">
-                <div class="flex justify-center md:justify-end items-center space-x-4 md:space-x-6">
-                    <a href="#chuva-acida" class="font-semibold hover:underline transition-colors duration-300">Chuva Ácida</a>
-                    <a href="#efeito-estufa" class="font-semibold hover:underline transition-colors duration-300">Efeito Estufa</a>
-                    <a href="#camada-ozonio" class="font-semibold hover:underline transition-colors duration-300">Camada de Ozônio</a>
-                    <a href="#metais-pesados" class="font-semibold hover:underline transition-colors duration-300">Metais Pesados</a>
-                    <button id="theme-toggle" type="button" class="text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 rounded-lg text-sm p-2.5 transition-colors">
-                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 016.465 3.636l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
-                    </button>
+    <div id="app-background"></div>
+    
+    <input type="file" id="music-folder-input" webkitdirectory directory multiple class="hidden">
+
+    <main id="app-content" class="h-screen w-screen relative">
+        
+        <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
+            <div class="w-full max-w-sm">
+                <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=AudioPhile" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
+                <div class="text-center my-8">
+                    <h2 id="track-title" class="text-2xl font-bold truncate">Bem-vindo!</h2>
+                    <h3 id="track-artist" class="text-md text-zinc-400 truncate">Adicione suas músicas</h3>
                 </div>
-            </nav>
-            <!-- Hero Content -->
-            <div class="flex-grow flex flex-col justify-center items-center text-center px-4">
-                <h1 class="text-4xl md:text-6xl font-bold drop-shadow-lg">Trabalho Bimestral – Química Ambiental</h1>
-                <p class="text-lg md:text-xl mt-4 max-w-2xl drop-shadow-md">Um estudo aprofundado sobre os principais problemas ambientais e suas reações químicas.</p>
+                <div>
+                     <div class="progress-container mb-2">
+                        <input type="range" id="progress-bar" class="w-full appearance-none cursor-pointer" value="0" step="1">
+                        <div class="flex justify-between text-xs text-zinc-400 mt-1.5">
+                            <span id="current-time">0:00</span>
+                            <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-zinc-200 px-2 my-6">
+                        <button id="shuffle-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Aleatório"><i class="fas fa-shuffle text-xl"></i></button>
+                        <button id="prev-btn" class="control-btn p-2 transition-colors" title="Anterior"><i class="fas fa-backward-step text-4xl"></i></button>
+                        <button id="play-pause-btn" class="control-btn bg-white text-black rounded-full w-20 h-20 flex items-center justify-center hover:scale-105 transition-transform shadow-lg" title="Play/Pause"><i class="fas fa-play text-3xl ml-1"></i></button>
+                        <button id="next-btn" class="control-btn p-2 transition-colors" title="Próxima"><i class="fas fa-forward-step text-4xl"></i></button>
+                        <button id="repeat-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Repetir"><i class="fas fa-repeat text-xl"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
-        <!-- Gradiente para suavizar a transição -->
-        <div class="absolute bottom-0 w-full h-40 bg-gradient-to-t from-slate-50 dark:from-slate-900 to-transparent"></div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-6 relative z-10">
-        <div class="space-y-12 py-12">
-
-            <!-- Artigo Chuva Ácida -->
-            <article id="chuva-acida" class="scroll-animate transition-all duration-700 ease-in-out">
-                <div class="relative rounded-xl shadow-lg overflow-hidden text-white bg-cover bg-center min-h-[400px] flex items-center hero-overlay" style="background-image: url('https://images.unsplash.com/photo-1593013735032-15f10685987b?q=80&w=1974&auto=format&fit=crop');" role="img" aria-label="Estátua de anjo de pedra sendo corroída, demonstrando o efeito da chuva ácida em monumentos.">
-                    <div class="relative z-10 p-8 md:p-12 w-full max-w-6xl mx-auto">
-                        <h2 class="flex items-center text-3xl md:text-4xl font-bold mb-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-cyan-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c0 0-6 6.5-6 10a6 6 0 0012 0c0-3.5-6-10-6-10zM10.5 13.5a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM13.5 11.5a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM14.5 15a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
-                            Chuva Ácida
-                        </h2>
-                        <div class="text-gray-200 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <div><h3 class="font-semibold text-lg text-white mb-1">O Processo Químico</h3><p>A chuva ácida é uma consequência direta da poluição atmosférica. O dióxido de enxofre (SO₂) e os óxidos de nitrogênio (NOx), liberados pela queima de combustíveis fósseis, reagem com o oxigênio e o vapor d'água na atmosfera. O SO₂ é oxidado a trióxido de enxofre (SO₃), que então reage com a água para formar o ácido sulfúrico (H₂SO₄). De forma similar, os NOx formam o ácido nítrico (HNO₃). Esses ácidos se dissolvem nas gotas de chuva, reduzindo seu pH para valores abaixo de 5,6, tornando-a corrosiva.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Fontes e Causas</h3><p>As principais fontes antropogênicas são as usinas termoelétricas a carvão, as refinarias de petróleo e os veículos automotores. Embora vulcões e processos biológicos liberem alguns desses gases, a concentração atual na atmosfera é majoritariamente resultado da atividade industrial iniciada no século XIX, que intensificou drasticamente a emissão desses poluentes.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Impactos Devastadores</h3><p>O impacto é vasto: monumentos históricos feitos de mármore ou calcário (CaCO₃) são quimicamente "dissolvidos" pelo ácido (CaCO₃ + H₂SO₄ → CaSO₄ + H₂O + CO₂). Nos ecossistemas aquáticos, a acidificação libera íons de alumínio (Al³⁺) tóxicos de minerais do solo, que são carregados para os rios e lagos, matando peixes e outras formas de vida. Nas florestas, a chuva ácida lixivia (remove) nutrientes essenciais do solo, como cálcio e magnésio, deixando as árvores vulneráveis a doenças e pragas.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Prevenção e Soluções</h3><p>A solução passa pela redução drástica das emissões. Isso inclui a instalação de filtros (conhecidos como "scrubbers") em chaminés industriais para capturar o SO₂, o uso de catalisadores em veículos para reduzir as emissões de NOx e, fundamentalmente, a transição para fontes de energia limpa e renovável. Acordos internacionais, como a Convenção sobre Poluição Atmosférica Transfronteiriça a Longa Distância na Europa, foram cruciais para mitigar o problema em diversas regiões.</p></div>
-                        </div>
-                        <!-- Resumo Visual e Reflexão -->
-                        <div class="mt-8 p-4 bg-black/30 rounded-lg backdrop-blur-sm border border-white/20">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                <div><strong class="flex items-center text-cyan-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.99 2.001V2.5a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5v-.5h4zM10 3a1 1 0 011 1v1.282l5.05 5.051a1 1 0 01.317 1.341l-1.666 2.499a1 1 0 01-1.415.316l-3.286-2.001V18a1 1 0 11-2 0v-4.508l-3.286 2.001a1 1 0 01-1.415-.316l-1.666-2.5a1 1 0 01.317-1.34L8 8.282V4a1 1 0 011-1h1z" clip-rule="evenodd" /></svg>Causas</strong><p class="mt-1 pl-7">Queima de combustíveis fósseis (SO₂ e NOx).</p></div>
-                                <div><strong class="flex items-center text-cyan-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1.75-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd" /></svg>Consequências</strong><p class="mt-1 pl-7">Corrosão de monumentos, morte de peixes, danos a florestas.</p></div>
-                                <div><strong class="flex items-center text-cyan-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>Soluções</strong><p class="mt-1 pl-7">Filtros industriais, energias renováveis, catalisadores.</p></div>
-                            </div>
-                            <p class="mt-4 pt-4 border-t border-white/20 text-gray-300 italic">“Você já percebeu monumentos ou estátuas corroídas na sua cidade?”</p>
-                        </div>
-                    </div>
+        <div id="search-view" class="view p-6 md:p-8">
+            <h1 class="text-3xl font-bold mb-6">Buscar</h1>
+            <div class="flex items-center gap-3 mb-6">
+                <div class="relative flex-grow">
+                    <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
                 </div>
-            </article>
+                <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-12 h-12 flex items-center justify-center rounded-lg">
+                    <i class="fas fa-folder-plus text-xl"></i>
+                </button>
+            </div>
+            <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
+                <i class="fas fa-music text-5xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
+                <p>Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
+            </div>
+            <ul id="song-list" class="space-y-1 mt-4"></ul>
+        </div>
+        
+        <div id="playlists-view" class="view p-6 md:p-8">
+             <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
+              <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
+        </div>
 
-            <blockquote class="text-center italic text-gray-600 dark:text-gray-400 border-l-4 border-green-500 dark:border-green-400 px-4 py-2 max-w-2xl mx-auto">
-                "No começo pensei que estivesse lutando para salvar as seringueiras, depois pensei que estava lutando para salvar a Floresta Amazônica. Agora, percebo que estou lutando pela humanidade."
-                <cite class="block not-italic mt-2 font-semibold">- Chico Mendes</cite>
-            </blockquote>
-
-            <!-- Artigo Efeito Estufa -->
-            <article id="efeito-estufa" class="scroll-animate transition-all duration-700 ease-in-out">
-                 <div class="relative rounded-xl shadow-lg overflow-hidden text-white bg-cover bg-center min-h-[400px] flex items-center hero-overlay" style="background-image: url('https://images.unsplash.com/photo-1591512499252-a526534b3f12?q=80&w=1974&auto=format&fit=crop');" role="img" aria-label="Chaminés industriais liberando fumaça, simbolizando a poluição que causa o efeito estufa.">
-                    <div class="relative z-10 p-8 md:p-12 w-full max-w-6xl mx-auto">
-                        <h2 class="flex items-center text-3xl md:text-4xl font-bold mb-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-red-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round"/><path d="M8 16s1.5-2 4-2 4 2 4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.2"/></svg>
-                            Efeito Estufa e Aquecimento Global
-                        </h2>
-                        <div class="text-gray-200 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Mecanismo de Ação</h3><p>O efeito estufa é um fenômeno vital que mantém o planeta aquecido. A radiação solar aquece a superfície da Terra, que por sua vez emite radiação infravermelha (calor). Gases de Efeito Estufa (GEE), como dióxido de carbono (CO₂), metano (CH₄) e óxido nitroso (N₂O), possuem ligações moleculares que absorvem essa radiação infravermelha, impedindo que ela escape para o espaço e reirradiando-a de volta para a superfície. O problema é o aumento excessivo da concentração desses gases, que aprisiona calor demais.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Causas Antropogênicas</h3><p>A Revolução Industrial marcou o início da queima massiva de combustíveis fósseis, principal fonte do excesso de CO₂. O desmatamento, especialmente de florestas tropicais, agrava o problema de duas formas: a queima libera CO₂ e a remoção das árvores reduz a capacidade do planeta de absorver esse gás via fotossíntese. A agropecuária é uma grande fonte de metano (processos digestivos de ruminantes) e óxido nitroso (uso de fertilizantes).</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Consequências Sistêmicas</h3><p>O aquecimento global não é apenas um aumento de temperatura. Ele desestabiliza todo o sistema climático. O derretimento de gelo polar eleva o nível do mar, ameaçando cidades costeiras. A acidificação dos oceanos, causada pela absorção de CO₂, dissolve os corais e ameaça a vida marinha. Eventos climáticos extremos tornam-se mais frequentes e intensos, gerando prejuízos econômicos, crises de refugiados climáticos e perda de biodiversidade em escala massiva.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Estratégias de Mitigação</h3><p>As soluções exigem uma transformação global. O Acordo de Paris visa limitar o aquecimento global bem abaixo de 2°C. Isso requer a substituição de combustíveis fósseis por energias renováveis, investimentos em eficiência energética, proteção e restauração de ecossistemas, e a transição para uma economia de baixo carbono. Tecnologias de captura de carbono também estão sendo desenvolvidas, mas a principal estratégia é reduzir as emissões na fonte.</p></div>
-                        </div>
-                        <!-- Resumo Visual e Reflexão -->
-                        <div class="mt-8 p-4 bg-black/30 rounded-lg backdrop-blur-sm border border-white/20">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                <div><strong class="flex items-center text-red-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.99 2.001V2.5a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5v-.5h4zM10 3a1 1 0 011 1v1.282l5.05 5.051a1 1 0 01.317 1.341l-1.666 2.499a1 1 0 01-1.415.316l-3.286-2.001V18a1 1 0 11-2 0v-4.508l-3.286 2.001a1 1 0 01-1.415-.316l-1.666-2.5a1 1 0 01.317-1.34L8 8.282V4a1 1 0 011-1h1z" clip-rule="evenodd" /></svg>Causas</strong><p class="mt-1 pl-7">Aumento de GEE (CO₂, CH₄) por combustíveis fósseis e desmatamento.</p></div>
-                                <div><strong class="flex items-center text-red-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1.75-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd" /></svg>Consequências</strong><p class="mt-1 pl-7">Aquecimento global, elevação do mar, eventos climáticos extremos.</p></div>
-                                <div><strong class="flex items-center text-red-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>Soluções</strong><p class="mt-1 pl-7">Energias limpas, reflorestamento, eficiência energética.</p></div>
-                            </div>
-                            <p class="mt-4 pt-4 border-t border-white/20 text-gray-300 italic">“Que hábitos do seu dia a dia podem reduzir emissões de gases estufa?”</p>
-                        </div>
-                    </div>
-                </div>
-            </article>
-
-            <blockquote class="text-center italic text-gray-600 dark:text-gray-400 border-l-4 border-green-500 dark:border-green-400 px-4 py-2 max-w-2xl mx-auto">
-                "Nós vivemos em uma sociedade estranhamente dependente da ciência e da tecnologia, na qual quase ninguém sabe algo sobre ciência e tecnologia."
-                <cite class="block not-italic mt-2 font-semibold">- Carl Sagan</cite>
-            </blockquote>
-
-            <!-- Artigo Camada de Ozônio -->
-            <article id="camada-ozonio" class="scroll-animate transition-all duration-700 ease-in-out">
-                <div class="relative rounded-xl shadow-lg overflow-hidden text-white bg-cover bg-center min-h-[400px] flex items-center hero-overlay" style="background-image: url('https://images.unsplash.com/photo-1541186819-a68228965893?q=80&w=2071&auto=format&fit=crop');" role="img" aria-label="Visão do planeta Terra do espaço, destacando a fina e brilhante linha azul da atmosfera.">
-                    <div class="relative z-10 p-8 md:p-12 w-full max-w-6xl mx-auto">
-                        <h2 class="flex items-center text-3xl md:text-4xl font-bold mb-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-blue-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="7" cy="12" r="2.2"/><circle cx="12" cy="8" r="2.2"/><circle cx="17" cy="12" r="2.2"/><path d="M8.6 11.2c1-.8 2.8-1.2 3.8-1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><path d="M15.4 11.2c-1-.8-2.8-1.2-3.8-1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
-                            Camada de Ozônio (O₃)
-                        </h2>
-                        <div class="text-gray-200 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <div><h3 class="font-semibold text-lg text-white mb-1">O Escudo Protetor da Terra</h3><p>A camada de ozônio é uma região da estratosfera, entre 15 e 35 km de altitude, com uma concentração relativamente alta de moléculas de ozônio (O₃). Este gás é fundamental para a vida, pois absorve de 97% a 99% da radiação ultravioleta (UV) de alta frequência emitida pelo Sol. O ozônio é formado quando a radiação UV quebra moléculas de oxigênio (O₂) em átomos de oxigênio (O), que então se recombinam com outras moléculas de O₂ para formar O₃.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">A Destruição Catalítica</h3><p>A principal ameaça veio dos clorofluorcarbonetos (CFCs), compostos sintéticos muito estáveis usados em refrigeração e aerossóis. Ao atingirem a estratosfera, a radiação UV quebra os CFCs, liberando átomos de cloro (Cl). O cloro atua como um catalisador em um ciclo destrutivo: um átomo de Cl reage com uma molécula de O₃, formando monóxido de cloro (ClO) e O₂. O ClO então reage com um átomo de oxigênio livre, liberando o átomo de Cl original, que fica livre para destruir outra molécula de O₃. Um único átomo de cloro pode destruir mais de 100.000 moléculas de ozônio.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Consequências da Exposição</h3><p>A rarefação da camada de ozônio, especialmente sobre a Antártida (o "buraco na camada de ozônio"), aumenta a incidência de radiação UV-B na superfície. Em humanos, isso eleva drasticamente as taxas de câncer de pele e catarata, além de suprimir o sistema imunológico. Nos ecossistemas, a radiação excessiva prejudica o fitoplâncton, a base da cadeia alimentar marinha, e pode reduzir a produtividade agrícola ao danificar as plantas.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Um Caso de Sucesso Global</h3><p>A descoberta do buraco na camada de ozônio levou a uma ação global sem precedentes. O Protocolo de Montreal, assinado em 1987, estabeleceu um cronograma para a eliminação da produção e consumo de CFCs e outras substâncias destruidoras de ozônio. O tratado é considerado o acordo ambiental internacional mais bem-sucedido da história. Graças a ele, a produção de CFCs foi praticamente zerada, e a camada de ozônio está mostrando sinais claros de recuperação, com previsão de se restaurar completamente até meados deste século.</p></div>
-                        </div>
-                        <!-- Resumo Visual e Reflexão -->
-                        <div class="mt-8 p-4 bg-black/30 rounded-lg backdrop-blur-sm border border-white/20">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                <div><strong class="flex items-center text-blue-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.99 2.001V2.5a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5v-.5h4zM10 3a1 1 0 011 1v1.282l5.05 5.051a1 1 0 01.317 1.341l-1.666 2.499a1 1 0 01-1.415.316l-3.286-2.001V18a1 1 0 11-2 0v-4.508l-3.286 2.001a1 1 0 01-1.415-.316l-1.666-2.5a1 1 0 01.317-1.34L8 8.282V4a1 1 0 011-1h1z" clip-rule="evenodd" /></svg>Causas</strong><p class="mt-1 pl-7">Emissão de gases CFCs (aerossóis, refrigeração antiga).</p></div>
-                                <div><strong class="flex items-center text-blue-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1.75-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd" /></svg>Consequências</strong><p class="mt-1 pl-7">Aumento de radiação UV, câncer de pele, danos a ecossistemas.</p></div>
-                                <div><strong class="flex items-center text-blue-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>Soluções</strong><p class="mt-1 pl-7">Protocolo de Montreal, banimento dos CFCs.</p></div>
-                            </div>
-                            <p class="mt-4 pt-4 border-t border-white/20 text-gray-300 italic">“Você verifica se os produtos que consome, como desodorantes, são livres de CFCs?”</p>
-                        </div>
-                    </div>
-                </div>
-            </article>
-
-             <blockquote class="text-center italic text-gray-600 dark:text-gray-400 border-l-4 border-green-500 dark:border-green-400 px-4 py-2 max-w-2xl mx-auto">
-                "Eu quero que vocês ajam como se a nossa casa estivesse pegando fogo. Porque está."
-                <cite class="block not-italic mt-2 font-semibold">- Greta Thunberg</cite>
-            </blockquote>
-            
-            <!-- Artigo Metais Pesados -->
-            <article id="metais-pesados" class="scroll-animate transition-all duration-700 ease-in-out">
-                 <div class="relative rounded-xl shadow-lg overflow-hidden text-white bg-cover bg-center min-h-[400px] flex items-center hero-overlay" style="background-image: url('https://images.unsplash.com/photo-1616632940249-92901725514b?q=80&w=1964&auto=format&fit=crop');" role="img" aria-label="Tubo de esgoto despejando resíduos poluídos em um ambiente natural.">
-                    <div class="relative z-10 p-8 md:p-12 w-full max-w-6xl mx-auto">
-                        <h2 class="flex items-center text-3xl md:text-4xl font-bold mb-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-gray-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 12l9-6 9 6-9 6-9-6z" /><path d="M7 12v4l5 3 5-3v-4" fill="none" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M17.5 7.5a1 1 0 11-2 0 1 1 0 012 0zM16.5 9.5c-.6.9-1.3 1.6-1 2.5.3 1 1.1 1.2 1.7 1 .6-.2.7-1 .4-1.9-.3-.9.1-1.5-1.1-2.1z" /></svg>
-                            Metais Pesados
-                        </h2>
-                        <div class="text-gray-200 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Contaminantes Persistentes</h3><p>Metais pesados são elementos metálicos com alta densidade e toxicidade em baixas concentrações. Incluem chumbo (Pb), mercúrio (Hg), cádmio (Cd), arsênio (As) e cromo (Cr). Sua principal característica ambiental é a persistência: eles não são biodegradáveis e permanecem no ambiente por longos períodos, contaminando solo, água e ar.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Fontes de Contaminação</h3><p>As atividades humanas são as principais fontes. O mercúrio é liberado pelo garimpo de ouro e pela queima de carvão. O chumbo era usado em gasolinas e tintas, e ainda está presente em baterias. O cádmio é encontrado em baterias e fertilizantes fosfatados. A mineração e o descarte inadequado de lixo eletrônico (e-lixo) e resíduos industriais são as principais vias de contaminação do solo e da água.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Bioacumulação e Biomagnificação</h3><p>Uma vez no ambiente, os metais pesados entram na cadeia alimentar. **Bioacumulação** ocorre quando um organismo absorve o metal mais rápido do que o elimina, acumulando-o em seus tecidos. **Biomagnificação** é o processo em que a concentração do metal aumenta a cada nível trófico da cadeia alimentar. Por exemplo, plâncton absorve pequenas quantidades de mercúrio, peixes pequenos comem muito plâncton, peixes grandes comem muitos peixes pequenos, e a concentração de mercúrio no peixe grande se torna perigosamente alta.</p></div>
-                            <div><h3 class="font-semibold text-lg text-white mb-1">Impactos na Saúde e Soluções</h3><p>Os efeitos na saúde são severos. O mercúrio causa danos neurológicos permanentes (doença de Minamata). O chumbo afeta o desenvolvimento cerebral em crianças. O cádmio é cancerígeno e causa danos aos rins. As soluções envolvem controle rigoroso das fontes de poluição, tratamento de efluentes industriais, políticas de logística reversa para pilhas e eletrônicos, e o desenvolvimento de técnicas de remediação, como a fitorremediação, que usa plantas para extrair metais do solo.</p></div>
-                        </div>
-                        <!-- Resumo Visual e Reflexão -->
-                        <div class="mt-8 p-4 bg-black/30 rounded-lg backdrop-blur-sm border border-white/20">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                <div><strong class="flex items-center text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.99 2.001V2.5a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5v-.5h4zM10 3a1 1 0 011 1v1.282l5.05 5.051a1 1 0 01.317 1.341l-1.666 2.499a1 1 0 01-1.415.316l-3.286-2.001V18a1 1 0 11-2 0v-4.508l-3.286 2.001a1 1 0 01-1.415-.316l-1.666-2.5a1 1 0 01.317-1.34L8 8.282V4a1 1 0 011-1h1z" clip-rule="evenodd" /></svg>Causas</strong><p class="mt-1 pl-7">Descarte industrial, garimpo, lixo eletrônico.</p></div>
-                                <div><strong class="flex items-center text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1.75-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd" /></svg>Consequências</strong><p class="mt-1 pl-7">Contaminação da água e solo, danos neurológicos, câncer.</p></div>
-                                <div><strong class="flex items-center text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>Soluções</strong><p class="mt-1 pl-7">Tratamento de efluentes, reciclagem de eletrônicos.</p></div>
-                            </div>
-                            <p class="mt-4 pt-4 border-t border-white/20 text-gray-300 italic">“Como você descarta pilhas, baterias e aparelhos eletrônicos antigos?”</p>
-                        </div>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Seção Infográfico -->
-            <section id="infografico" class="scroll-animate transition-all duration-700 ease-in-out">
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 transition-colors">
-                    <h2 class="text-3xl font-bold text-center text-green-900 dark:text-green-400 mb-6">Conexões Invisíveis: Um Ciclo de Impactos</h2>
-                    <p class="text-center max-w-3xl mx-auto mb-8 text-gray-700 dark:text-slate-400">Os problemas ambientais não são isolados. Eles se conectam e se intensificam mutuamente, originados em grande parte por um modelo de desenvolvimento insustentável. Este diagrama ilustra essa interdependência.</p>
-                    <div class="w-full max-w-3xl mx-auto">
-                        <svg viewBox="0 0 300 200" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
-                            <style>
-                                .label { font-family: 'Poppins', sans-serif; font-size: 8px; fill: #166534; }
-                                .dark .label { fill: #6ee7b7; }
-                                .line { stroke: #9ca3af; stroke-width: 0.5; }
-                                .dark .line { stroke: #4b5563; }
-                                .central-circle { fill: #fca5a5; }
-                                .dark .central-circle { fill: #991b1b; }
-                                .topic-circle { fill: #d1d5db; }
-                                .dark .topic-circle { fill: #374151; }
-                                .central-text { font-size: 9px; font-weight: bold; fill: #7f1d1d; }
-                                .dark .central-text { fill: #fecaca; }
-                            </style>
-                            <circle cx="150" cy="100" r="30" class="central-circle"/>
-                            <text x="150" y="103" text-anchor="middle" class="central-text">Atividade Humana</text>
-                            
-                            <line x1="150" y1="100" x2="50" y2="50" class="line"/>
-                            <circle cx="50" cy="50" r="12" class="topic-circle"/>
-                            <text x="50" y="47" text-anchor="middle" class="label">Chuva</text>
-                            <text x="50" y="55" text-anchor="middle" class="label">Ácida</text>
-
-                            <line x1="150" y1="100" x2="250" y2="50" class="line"/>
-                            <circle cx="250" cy="50" r="12" class="topic-circle"/>
-                            <text x="250" y="47" text-anchor="middle" class="label">Efeito</text>
-                            <text x="250" y="55" text-anchor="middle" class="label">Estufa</text>
-                            
-                            <line x1="150" y1="100" x2="50" y2="150" class="line"/>
-                            <circle cx="50" cy="150" r="12" class="topic-circle"/>
-                            <text x="50" y="147" text-anchor="middle" class="label">Camada</text>
-                            <text x="50" y="155" text-anchor="middle" class="label">de Ozônio</text>
-
-                            <line x1="150" y1="100" x2="250" y2="150" class="line"/>
-                            <circle cx="250"cy="150" r="12" class="topic-circle"/>
-                            <text x="250" y="147" text-anchor="middle" class="label">Metais</text>
-                            <text x="250" y="155" text-anchor="middle" class="label">Pesados</text>
-                        </svg>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Seção Glossário -->
-            <section id="glossario" class="scroll-animate transition-all duration-700 ease-in-out">
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 transition-colors">
-                    <h2 class="text-3xl font-bold text-center text-green-900 dark:text-green-400 mb-6">Glossário Ambiental</h2>
-                    <dl class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                        <div class="p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 transition-colors">
-                            <dt class="font-bold text-lg text-green-800 dark:text-green-300">Bioacumulação</dt>
-                            <dd class="mt-1 text-gray-700 dark:text-slate-400">Processo no qual um organismo absorve uma substância tóxica (como um metal pesado) a uma taxa maior do que a que consegue eliminar, acumulando-a em seus tecidos.</dd>
-                        </div>
-                        <div class="p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 transition-colors">
-                            <dt class="font-bold text-lg text-green-800 dark:text-green-300">Biomagnificação</dt>
-                            <dd class="mt-1 text-gray-700 dark:text-slate-400">Aumento da concentração de um contaminante em cada nível da cadeia alimentar. Predadores no topo acumulam as maiores concentrações.</dd>
-                        </div>
-                        <div class="p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 transition-colors">
-                            <dt class="font-bold text-lg text-green-800 dark:text-green-300">CFCs (Clorofluorcarbonetos)</dt>
-                            <dd class="mt-1 text-gray-700 dark:text-slate-400">Compostos químicos sintéticos que eram usados em aerossóis e refrigeração. São os principais responsáveis pela destruição da camada de ozônio.</dd>
-                        </div>
-                         <div class="p-4 rounded-lg bg-slate-100 dark:bg-slate-700/50 transition-colors">
-                            <dt class="font-bold text-lg text-green-800 dark:text-green-300">Lixiviação</dt>
-                            <dd class="mt-1 text-gray-700 dark:text-slate-400">Processo de "lavagem" do solo pela água (como a chuva ácida), que arrasta e remove nutrientes minerais essenciais para as plantas.</dd>
-                        </div>
-                    </dl>
-                </div>
-            </section>
-            
-            <!-- Seção Conclusão -->
-            <section id="conclusao" class="scroll-animate transition-all duration-700 ease-in-out">
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 text-center transition-colors">
-                    <h2 class="text-3xl font-bold text-green-900 dark:text-green-400 mb-4">Conclusão: A Química de um Futuro Sustentável</h2>
-                    <p class="text-gray-700 dark:text-slate-400 max-w-4xl mx-auto leading-relaxed text-base sm:text-lg">
-                        A análise química dos grandes problemas ambientais revela uma verdade incontestável: a atividade humana alterou ciclos biogeoquímicos fundamentais em escala planetária. Compreender as reações que levam à chuva ácida, ao aquecimento global, à destruição do ozônio e à contaminação por metais pesados é o primeiro passo para reverter esses danos. A solução, assim como o problema, também passa pela química: através de novas tecnologias, energias limpas e uma gestão de resíduos mais inteligente, podemos construir um futuro onde o desenvolvimento e a preservação ambiental caminhem juntos.
-                    </p>
-                    <!-- Opinião Pessoal -->
-                    <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                        <h3 class="font-semibold text-lg text-green-800 dark:text-green-300">Reflexão Pessoal</h3>
-                        <p class="text-gray-600 dark:text-slate-400 max-w-3xl mx-auto mt-2 text-sm sm:text-base">
-                           Ao realizar este estudo, o que mais nos impressionou foi a história de sucesso do Protocolo de Montreal. Ele prova que, quando há cooperação global e vontade política baseada na ciência, somos capazes de reverter danos ambientais severos. Isso me dá esperança de que podemos encontrar soluções para os desafios climáticos que enfrentamos hoje.
-                        </p>
-                    </div>
-                </div>
-            </section>
+        <div id="playlist-details-view" class="view p-6 md:p-8">
+            <div class="flex items-center mb-6">
+                <button id="back-to-playlists-btn" class="p-2 mr-2"><i class="fas fa-arrow-left text-xl"></i></button>
+                <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
+            </div>
+            <ul id="playlist-song-list" class="space-y-1"></ul>
         </div>
     </main>
+    
+    <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
+        <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-search text-xl"></i>
+            <span class="text-xs">Buscar</span>
+        </button>
+        <button data-view="player-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-green-500 transition-colors">
+            <i class="fas fa-circle-play text-xl"></i>
+            <span class="text-xs">Player</span>
+        </button>
+        <button data-view="playlists-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-bars-staggered text-xl"></i>
+            <span class="text-xs">Playlists</span>
+        </button>
+        <button id="create-playlist-btn" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-plus text-xl"></i>
+            <span class="text-xs">Criar</span>
+        </button>
+    </nav>
+    
+    <div id="create-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
+             <h2 class="text-xl font-bold text-center mb-4">Criar nova playlist</h2>
+             <input id="playlist-name-input" type="text" placeholder="Dê um nome à sua playlist" class="w-full bg-zinc-700 border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-500 mb-6">
+             <div class="flex justify-end gap-3">
+                <button id="cancel-playlist-btn" class="px-5 py-2 rounded-full font-semibold transition-colors hover:bg-zinc-700">Cancelar</button>
+                <button id="confirm-playlist-btn" class="bg-green-500 text-black px-5 py-2 rounded-full font-semibold transition-colors hover:bg-green-400">Criar</button>
+             </div>
+        </div>
+    </div>
 
-    <!-- Footer -->
-    <footer class="relative bg-green-900 dark:bg-slate-950 text-white mt-16 transition-colors">
-        <div class="container mx-auto px-6 py-8 text-center">
-            <div class="grid md:grid-cols-2 gap-8 mb-8">
-                <div>
-                    <h3 class="font-bold text-lg mb-2">Fontes e Referências</h3>
-                    <div class="flex justify-center items-center space-x-4 text-green-200 dark:text-green-400">
-                        <a href="https://www.un.org/en/climatechange" target="_blank" rel="noopener noreferrer" class="hover:underline">ONU</a>
-                        <a href="https://www.ibama.gov.br/" target="_blank" rel="noopener noreferrer" class="hover:underline">IBAMA</a>
-                        <a href="https://www.greenpeace.org/brasil/" target="_blank" rel="noopener noreferrer" class="hover:underline">Greenpeace</a>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="font-bold text-lg mb-2">Créditos</h3>
-                    <div class="text-sm text-green-300 dark:text-green-500 space-y-1">
-                        <p>Criado por: Mateus Henrique & Gabriel Carramão</p>
-                        <p>Imagens por: <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" class="hover:underline">Unsplash</a></p>
-                    </div>
+    <div id="add-to-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
+             <h2 class="text-xl font-bold text-center mb-4">Adicionar à playlist</h2>
+             <div id="playlist-selection-list" class="max-h-60 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <template id="song-item-template">
+         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
+            <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
+                <img class="song-cover w-12 h-12 rounded-md object-cover" src="" alt="Capa">
+                <div class="flex-grow min-w-0">
+                    <p class="song-title font-semibold truncate"></p>
+                    <p class="song-artist text-sm text-zinc-400 truncate"></p>
                 </div>
             </div>
-            <p class="text-lg font-semibold mb-2">“Cuidar do meio ambiente é cuidar da vida.”</p>
-            <p class="text-sm text-green-300 dark:text-green-500">© <span id="current-year"></span> Trabalho Escolar – 2º Ano, Disciplina: Química.</p>
-        </div>
-    </footer>
+            <p class="song-duration text-sm text-zinc-400 ml-auto pr-2"></p>
+            <button class="playlist-action-btn text-zinc-400 hover:text-white p-2"><i class="fas fa-plus"></i></button>
+        </li>
+    </template>
 
-    <!-- Botão Voltar ao Topo -->
-    <button id="back-to-top-btn" class="fixed bottom-5 right-5 bg-green-700 dark:bg-green-600 text-white p-3 rounded-full shadow-lg hover:bg-green-800 dark:hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
-    </button>
+    <template id="playlist-item-template">
+        <div class="playlist-item-grid-entry group flex items-center justify-between gap-4 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/80 transition-colors">
+            <div class="playlist-clickable-area flex-grow flex items-center gap-4 cursor-pointer">
+                <img class="playlist-cover w-16 h-16 rounded-md object-cover" src="" alt="Capa da Playlist">
+                <div>
+                    <p class="playlist-name font-semibold"></p>
+                    <p class="playlist-song-count text-sm text-zinc-400"></p>
+                </div>
+            </div>
+            <button class="delete-playlist-btn text-zinc-500 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-trash"></i></button>
+        </div>
+    </template>
     
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const backToTopBtn = document.getElementById('back-to-top-btn');
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            const htmlElement = document.documentElement;
+    document.addEventListener('DOMContentLoaded', () => {
+        const App = {
+            dom: {
+                background: document.getElementById('app-background'),
+                albumCover: document.getElementById('album-cover'),
+                trackTitle: document.getElementById('track-title'),
+                trackArtist: document.getElementById('track-artist'),
+                progressBar: document.getElementById('progress-bar'),
+                currentTimeEl: document.getElementById('current-time'),
+                durationEl: document.getElementById('duration'),
+                playPauseBtn: document.getElementById('play-pause-btn'),
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                shuffleBtn: document.getElementById('shuffle-btn'),
+                repeatBtn: document.getElementById('repeat-btn'),
+                navButtons: document.querySelectorAll('.nav-btn'),
+                views: document.querySelectorAll('.view'),
+                addMusicBtn: document.getElementById('add-music-btn'),
+                musicFolderInput: document.getElementById('music-folder-input'), // NOVO
+                songList: document.getElementById('song-list'),
+                libraryEmptyState: document.getElementById('library-empty-state'),
+                songItemTemplate: document.getElementById('song-item-template'),
+                searchInput: document.getElementById('search-input'),
+                playlistGrid: document.getElementById('playlist-grid'),
+                playlistItemTemplate: document.getElementById('playlist-item-template'),
+                createPlaylistBtn: document.getElementById('create-playlist-btn'),
+                createPlaylistModal: document.getElementById('create-playlist-modal'),
+                cancelPlaylistBtn: document.getElementById('cancel-playlist-btn'),
+                confirmPlaylistBtn: document.getElementById('confirm-playlist-btn'),
+                playlistNameInput: document.getElementById('playlist-name-input'),
+                addToPlaylistModal: document.getElementById('add-to-playlist-modal'),
+                playlistSelectionList: document.getElementById('playlist-selection-list'),
+                playlistDetailsView: document.getElementById('playlist-details-view'),
+                backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
+                playlistDetailsTitle: document.getElementById('playlist-details-title'),
+                playlistSongList: document.getElementById('playlist-song-list'),
+            },
 
-            // Lógica do Tema Escuro/Claro
-            const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    htmlElement.classList.add('dark');
-                    themeToggleLightIcon.classList.remove('hidden');
-                    themeToggleDarkIcon.classList.add('hidden');
-                } else {
-                    htmlElement.classList.remove('dark');
-                    themeToggleDarkIcon.classList.remove('hidden');
-                    themeToggleLightIcon.classList.add('hidden');
+            state: {
+                songs: [],
+                playlists: [],
+                currentSongIndex: -1,
+                isPlaying: false,
+                isShuffle: false,
+                repeatMode: 'none',
+                songIdToAddToPlaylist: null,
+                currentPlaylistId: null,
+                playQueue: [], 
+            },
+
+            audio: new Audio(),
+
+            async init() {
+                this.registerServiceWorker(); // NOVO
+                await this.initDB();
+                this.bindEvents();
+                await this.loadSongsFromDB();
+                await this.loadPlaylistsFromDB();
+                this.updateRepeatButtonUI();
+                this.updateShuffleButtonUI();
+                this.audio.volume = 1; 
+                this.switchView('player-view');
+            },
+            
+            // NOVO: Registra o Service Worker
+            registerServiceWorker() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(registration => console.log('Service Worker registrado com sucesso:', registration))
+                        .catch(error => console.log('Falha ao registrar Service Worker:', error));
                 }
-            };
+            },
 
-            const savedTheme = localStorage.getItem('color-theme');
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-            if (savedTheme) {
-                applyTheme(savedTheme);
-            } else {
-                applyTheme(systemPrefersDark ? 'dark' : 'light');
-            }
-
-            themeToggleBtn.addEventListener('click', () => {
-                const currentTheme = htmlElement.classList.contains('dark') ? 'dark' : 'light';
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                localStorage.setItem('color-theme', newTheme);
-                applyTheme(newTheme);
-            });
-
-            // Lógica para o botão "Voltar ao topo"
-            window.addEventListener('scroll', () => {
-                if (window.scrollY > 300) {
-                    backToTopBtn.classList.add('show');
-                } else {
-                    backToTopBtn.classList.remove('show');
+            animateIcon(element) {
+                const icon = element.querySelector('i');
+                if (icon) {
+                    icon.classList.add('nav-icon-bounce');
+                    icon.addEventListener('animationend', () => icon.classList.remove('nav-icon-bounce'), { once: true });
                 }
-            });
+            },
 
-            backToTopBtn.addEventListener('click', () => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
+            bindEvents() {
+                // ALTERADO: O botão agora clica no input de arquivo
+                this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
+                // ALTERADO: O evento de adicionar musicas agora vem do input
+                this.dom.musicFolderInput.addEventListener('change', (e) => this.addMusicFiles(e.target.files));
 
-            // Lógica para animação de scroll
-            const animatedElements = document.querySelectorAll('.scroll-animate');
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                        observer.unobserve(entry.target);
+                this.dom.playPauseBtn.addEventListener('click', (e) => { this.togglePlayPause(); this.animateIcon(e.currentTarget); });
+                this.dom.nextBtn.addEventListener('click', (e) => { this.changeTrack('next'); this.animateIcon(e.currentTarget); });
+                this.dom.prevBtn.addEventListener('click', (e) => { this.changeTrack('prev'); this.animateIcon(e.currentTarget); });
+                this.dom.repeatBtn.addEventListener('click', (e) => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); });
+                this.dom.shuffleBtn.addEventListener('click', (e) => { this.toggleShuffle(); this.animateIcon(e.currentTarget); });
+                this.dom.progressBar.addEventListener('input', (e) => this.seek(e.target.value));
+                this.audio.addEventListener('timeupdate', () => this.updateProgress());
+                this.audio.addEventListener('ended', () => this.handleSongEnd());
+                this.audio.addEventListener('loadedmetadata', () => this.updateProgress());
+
+                this.dom.navButtons.forEach(btn => {
+                    if(btn.dataset.view) {
+                        btn.addEventListener('click', (e) => {
+                            this.switchView(e.currentTarget.dataset.view);
+                            this.animateIcon(e.currentTarget);
+                        });
                     }
                 });
-            }, { threshold: 0.1 });
-            animatedElements.forEach(el => observer.observe(el));
+
+                this.dom.searchInput.addEventListener('input', (e) => this.filterSongList(e.target.value));
+                
+                this.dom.createPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(true));
+                this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
+                this.dom.confirmPlaylistBtn.addEventListener('click', () => this.createPlaylist());
+                this.dom.createPlaylistModal.addEventListener('click', (e) => { if(e.target === this.dom.createPlaylistModal) this.showPlaylistModal(false); });
+                this.dom.addToPlaylistModal.addEventListener('click', (e) => { if(e.target === this.dom.addToPlaylistModal) this.showAddToPlaylistModal(false); });
+                
+                this.dom.playlistSelectionList.addEventListener('click', (e) => {
+                    const listItem = e.target.closest('[data-playlist-id]');
+                    if(listItem) {
+                        const playlistId = parseInt(listItem.dataset.playlistId);
+                        this.addSongToPlaylist(this.state.songIdToAddToPlaylist, playlistId);
+                    }
+                });
+
+                 this.dom.playlistGrid.addEventListener('click', e => {
+                    const deleteBtn = e.target.closest('.delete-playlist-btn');
+                    const clickableArea = e.target.closest('.playlist-clickable-area');
+                    
+                    if (deleteBtn) {
+                        const playlistEntry = e.target.closest('.playlist-item-grid-entry');
+                        const playlistId = parseInt(playlistEntry.dataset.id);
+                        this.deletePlaylist(playlistId);
+                    } else if (clickableArea) {
+                        const playlistEntry = e.target.closest('.playlist-item-grid-entry');
+                        const playlistId = parseInt(playlistEntry.dataset.id);
+                        this.showPlaylistDetails(playlistId);
+                    }
+                });
+
+                this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
+                
+                this.dom.songList.addEventListener('click', (e) => this.handleSongListClick(e, this.state.songs));
+                this.dom.playlistSongList.addEventListener('click', (e) => {
+                    const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
+                    if(playlist) {
+                        const songsInPlaylist = this.state.songs.filter(song => playlist.songIds.includes(song.id));
+                        this.handleSongListClick(e, songsInPlaylist, true);
+                    }
+                });
+            },
             
-            // Lógica para o ano dinâmico no rodapé
-            document.getElementById('current-year').textContent = new Date().getFullYear();
-        });
+            handleSongListClick(event, songSourceList, isPlaylistContext = false) {
+                const songItem = event.target.closest('.song-item');
+                if (!songItem) return;
+                
+                const songId = parseInt(songItem.dataset.songId);
+                const actionBtn = event.target.closest('.playlist-action-btn');
+
+                if (actionBtn) {
+                    if(isPlaylistContext) {
+                        this.removeSongFromPlaylist(songId, this.state.currentPlaylistId);
+                    } else {
+                        this.state.songIdToAddToPlaylist = songId;
+                        this.showAddToPlaylistModal(true);
+                    }
+                } else if (event.target.closest('.clickable-area')) {
+                     this.state.playQueue = [...songSourceList]; 
+                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
+                     
+                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
+                     this.loadSong(globalIndex, true, queueIndex);
+                     this.switchView('player-view');
+                }
+            },
+
+
+            switchView(viewId) {
+                this.dom.views.forEach(v => v.classList.toggle('active', v.id === viewId));
+                this.dom.navButtons.forEach(b => {
+                    if (b.dataset.view) {
+                         b.classList.toggle('text-green-500', b.dataset.view === viewId);
+                         b.classList.toggle('text-zinc-400', b.dataset.view !== viewId);
+                    }
+                });
+            },
+
+            loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
+                if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
+                
+                this.state.currentSongIndex = globalIndex;
+                const song = this.state.songs[globalIndex];
+                
+                this.state.currentQueueIndex = queueIndex !== -1 ? queueIndex : -1;
+                
+                this.audio.src = URL.createObjectURL(song.file);
+                this.updatePlayerUI(song);
+
+                if (shouldPlay) this.play();
+            },
+
+            play() {
+                if (this.state.songs.length === 0) return;
+                this.state.isPlaying = true;
+                this.audio.play().catch(e => console.error("Erro ao tocar:", e));
+                this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
+            },
+
+            pause() {
+                this.state.isPlaying = false;
+                this.audio.pause();
+                this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>';
+            },
+
+            togglePlayPause() {
+                if (this.state.currentSongIndex === -1 && this.state.songs.length > 0) {
+                     this.state.playQueue = [...this.state.songs];
+                     this.loadSong(0, true, 0);
+                } else {
+                    this.state.isPlaying ? this.pause() : this.play();
+                }
+            },
+
+            changeTrack(direction) {
+                const source = this.state.playQueue.length > 0 ? this.state.playQueue : this.state.songs;
+                if (source.length === 0) return;
+
+                let newQueueIndex;
+
+                if (this.state.isShuffle) {
+                    do { newQueueIndex = Math.floor(Math.random() * source.length); } 
+                    while (source.length > 1 && newQueueIndex === this.state.currentQueueIndex);
+                } else {
+                    const currentIndex = this.state.currentQueueIndex;
+                    newQueueIndex = (direction === 'next') 
+                        ? (currentIndex + 1) % source.length
+                        : (currentIndex - 1 + source.length) % source.length;
+                }
+                
+                const nextSong = source[newQueueIndex];
+                const globalIndex = this.state.songs.findIndex(s => s.id === nextSong.id);
+                this.loadSong(globalIndex, true, newQueueIndex);
+            },
+            
+            handleSongEnd() {
+                if (this.state.repeatMode === 'one') {
+                    this.audio.currentTime = 0;
+                    this.play();
+                } else {
+                    this.changeTrack('next');
+                }
+            },
+
+            seek(value) {
+                if(this.audio.duration) {
+                    this.audio.currentTime = (value / 100) * this.audio.duration;
+                    this.dom.progressBar.style.setProperty('--progress-percent', `${value}%`);
+                }
+            },
+
+            updatePlayerUI(song) {
+                this.dom.trackTitle.textContent = song.title || 'Título Desconhecido';
+                this.dom.trackArtist.textContent = song.artist || 'Artista Desconhecido';
+                const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=AudioPhile';
+                this.dom.albumCover.src = coverUrl;
+                this.dom.background.style.backgroundImage = `url(${coverUrl})`;
+            },
+            
+            updateProgress() {
+                const { duration, currentTime } = this.audio;
+                if (duration) {
+                    const progressPercent = (currentTime / duration) * 100;
+                    this.dom.progressBar.value = progressPercent;
+                    this.dom.progressBar.style.setProperty('--progress-percent', `${progressPercent}%`);
+                    this.dom.durationEl.textContent = this.formatTime(duration);
+                }
+                this.dom.currentTimeEl.textContent = this.formatTime(currentTime);
+            },
+
+            formatTime(seconds) {
+                if (isNaN(seconds)) return "0:00";
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            },
+
+            toggleRepeatMode() {
+                const modes = ['none', 'all', 'one'];
+                const currentIndex = modes.indexOf(this.state.repeatMode);
+                this.state.repeatMode = modes[(currentIndex + 1) % modes.length];
+                this.updateRepeatButtonUI();
+            },
+
+            updateRepeatButtonUI() {
+                this.dom.repeatBtn.classList.remove('text-green-500', 'repeat-mode-one');
+                if (this.state.repeatMode === 'all') this.dom.repeatBtn.classList.add('text-green-500');
+                else if (this.state.repeatMode === 'one') this.dom.repeatBtn.classList.add('text-green-500', 'repeat-mode-one');
+            },
+            
+            toggleShuffle() {
+                this.state.isShuffle = !this.state.isShuffle;
+                this.updateShuffleButtonUI();
+            },
+            
+            updateShuffleButtonUI() {
+                this.dom.shuffleBtn.classList.toggle('text-green-500', this.state.isShuffle);
+            },
+            
+            filterSongList(term) {
+                const lowerCaseTerm = term.toLowerCase().trim();
+                const songItems = this.dom.songList.querySelectorAll('.song-item');
+                songItems.forEach(item => {
+                    const title = item.querySelector('.song-title').textContent.toLowerCase();
+                    const artist = item.querySelector('.song-artist').textContent.toLowerCase();
+                    const isVisible = title.includes(lowerCaseTerm) || artist.includes(lowerCaseTerm);
+                    item.style.display = isVisible ? 'flex' : 'none';
+                });
+            },
+            
+            showPlaylistModal(show) {
+                if(show) {
+                    this.dom.createPlaylistModal.classList.remove('opacity-0', 'pointer-events-none');
+                    this.dom.createPlaylistModal.querySelector('.modal-content').classList.remove('scale-95');
+                    this.dom.playlistNameInput.focus();
+                } else {
+                    this.dom.createPlaylistModal.classList.add('opacity-0');
+                    this.dom.createPlaylistModal.querySelector('.modal-content').classList.add('scale-95');
+                    setTimeout(() => this.dom.createPlaylistModal.classList.add('pointer-events-none'), 300);
+                }
+            },
+            showAddToPlaylistModal(show) {
+                 if(show) {
+                    this.renderPlaylistSelectionList();
+                    this.dom.addToPlaylistModal.classList.remove('opacity-0', 'pointer-events-none');
+                    this.dom.addToPlaylistModal.querySelector('.modal-content').classList.remove('scale-95');
+                } else {
+                    this.dom.addToPlaylistModal.classList.add('opacity-0');
+                    this.dom.addToPlaylistModal.querySelector('.modal-content').classList.add('scale-95');
+                    setTimeout(() => this.dom.addToPlaylistModal.classList.add('pointer-events-none'), 300);
+                }
+            },
+
+            async createPlaylist() {
+                const name = this.dom.playlistNameInput.value.trim();
+                if(!name) return;
+                const newPlaylist = { name, songIds: [] };
+                await this.savePlaylistToDB(newPlaylist);
+                this.dom.playlistNameInput.value = '';
+                this.showPlaylistModal(false);
+                await this.loadPlaylistsFromDB();
+            },
+            async deletePlaylist(playlistId) {
+                if (confirm('Tem certeza que deseja excluir esta playlist?')) {
+                    await this.deletePlaylistFromDB(playlistId);
+                    await this.loadPlaylistsFromDB();
+                }
+            },
+            async addSongToPlaylist(songId, playlistId) {
+                const playlist = this.state.playlists.find(p => p.id === playlistId);
+                if (playlist && !playlist.songIds.includes(songId)) {
+                    playlist.songIds.push(songId);
+                    await this.savePlaylistToDB(playlist);
+                    this.showAddToPlaylistModal(false);
+                    await this.loadPlaylistsFromDB();
+                }
+            },
+            async removeSongFromPlaylist(songId, playlistId) {
+                const playlist = this.state.playlists.find(p => p.id === playlistId);
+                if (playlist) {
+                    playlist.songIds = playlist.songIds.filter(id => id !== songId);
+                    await this.savePlaylistToDB(playlist);
+                    this.showPlaylistDetails(playlistId);
+                    await this.loadPlaylistsFromDB();
+                }
+            },
+            showPlaylistDetails(playlistId) {
+                this.state.currentPlaylistId = playlistId;
+                const playlist = this.state.playlists.find(p => p.id === playlistId);
+                if(!playlist) return;
+
+                this.dom.playlistDetailsTitle.textContent = playlist.name;
+                const songsInPlaylist = this.state.songs.filter(song => playlist.songIds.includes(song.id));
+                this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
+                this.switchView('playlist-details-view');
+            },
+
+            db: null,
+            async initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('AudioPhileDB', 2);
+                    request.onerror = (event) => reject("Erro ao abrir o DB");
+                    request.onsuccess = (event) => {
+                        this.db = event.target.result;
+                        resolve(this.db);
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('songs')) {
+                            db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
+                        }
+                        if (!db.objectStoreNames.contains('playlists')) {
+                            db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
+                        }
+                    };
+                });
+            },
+
+            // ALTERADO: Função agora aceita uma lista de arquivos
+            async addMusicFiles(files) {
+                try {
+                    const supportedExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a'];
+                    
+                    for (const file of files) {
+                        const isSupported = supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                        if (isSupported) {
+                            const metadata = await this.readAudioMetadata(file);
+                            const song = { file, ...metadata };
+                            await this.saveSongToDB(song);
+                        }
+                    }
+                    await this.loadSongsFromDB();
+                } catch (error) {
+                    console.error("Erro ao processar os arquivos:", error);
+                }
+            },
+
+            readAudioMetadata(file) {
+                return new Promise((resolve) => {
+                    jsmediatags.read(file, {
+                        onSuccess: (tag) => {
+                            const { title, artist, picture } = tag.tags;
+                            let coverUrl = null;
+                            if (picture) {
+                                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
+                                coverUrl = `data:${picture.format};base64,${base64String}`;
+                            }
+                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, coverUrl });
+                        },
+                        onError: (error) => {
+                            console.warn('Erro ao ler metadados:', error);
+                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
+                        }
+                    });
+                });
+            },
+            
+            async saveSongToDB(song) {
+                if (!this.db) await this.initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songs'], 'readwrite');
+                    const store = transaction.objectStore('songs');
+                    const request = store.add(song);
+                    request.onsuccess = resolve;
+                    request.onerror = reject;
+                });
+            },
+
+            async loadSongsFromDB() {
+                if (!this.db) await this.initDB();
+                 return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songs'], 'readonly');
+                    const store = transaction.objectStore('songs');
+                    const request = store.getAll();
+                    request.onsuccess = (event) => {
+                        this.state.songs = event.target.result;
+                        this.renderSongList();
+                        resolve(this.state.songs);
+                    };
+                    request.onerror = reject;
+                 });
+            },
+            
+            async savePlaylistToDB(playlist) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['playlists'], 'readwrite');
+                    const store = transaction.objectStore('playlists');
+                    const request = store.put(playlist);
+                    request.onsuccess = resolve;
+                    request.onerror = reject;
+                });
+            },
+             async loadPlaylistsFromDB() {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['playlists'], 'readonly');
+                    const store = transaction.objectStore('playlists');
+                    const request = store.getAll();
+                    request.onsuccess = (event) => {
+                        this.state.playlists = event.target.result;
+                        this.renderPlaylistGrid();
+                        resolve(this.state.playlists);
+                    };
+                    request.onerror = reject;
+                });
+            },
+            async deletePlaylistFromDB(playlistId) {
+                 return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['playlists'], 'readwrite');
+                    const store = transaction.objectStore('playlists');
+                    const request = store.delete(playlistId);
+                    request.onsuccess = resolve;
+                    request.onerror = reject;
+                });
+            },
+
+            renderSongList(songsToRender = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
+                container.innerHTML = '';
+                const hasSongs = songsToRender.length > 0;
+                
+                if (container === this.dom.songList) {
+                    this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
+                }
+
+                if(hasSongs) {
+                    const fragment = document.createDocumentFragment();
+                    songsToRender.forEach((song) => {
+                        const item = this.dom.songItemTemplate.content.cloneNode(true);
+                        const li = item.querySelector('.song-item');
+                        const actionBtn = item.querySelector('.playlist-action-btn i');
+                        
+                        li.dataset.songId = song.id;
+                        item.querySelector('.song-cover').src = song.coverUrl || 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                        item.querySelector('.song-title').textContent = song.title;
+                        item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                        
+                        if (isPlaylistContext) {
+                            actionBtn.classList.remove('fa-plus');
+                            actionBtn.classList.add('fa-trash-can');
+                        }
+                        
+                        fragment.appendChild(item);
+                    });
+                    container.appendChild(fragment);
+                }
+            },
+            renderPlaylistGrid() {
+                this.dom.playlistGrid.innerHTML = '';
+                const fragment = document.createDocumentFragment();
+                this.state.playlists.forEach(playlist => {
+                    const item = this.dom.playlistItemTemplate.content.cloneNode(true);
+                    const entry = item.querySelector('.playlist-item-grid-entry');
+                    entry.dataset.id = playlist.id;
+                    item.querySelector('.playlist-name').textContent = playlist.name;
+                    item.querySelector('.playlist-song-count').textContent = `${playlist.songIds.length} músicas`;
+
+                    if (playlist.songIds.length > 0) {
+                        const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
+                        if (firstSong && firstSong.coverUrl) {
+                            item.querySelector('.playlist-cover').src = firstSong.coverUrl;
+                        }
+                    } else {
+                         item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
+                    }
+
+                    fragment.appendChild(item);
+                });
+                this.dom.playlistGrid.appendChild(fragment);
+            },
+            renderPlaylistSelectionList() {
+                this.dom.playlistSelectionList.innerHTML = '';
+                if(this.state.playlists.length === 0) {
+                    this.dom.playlistSelectionList.innerHTML = `<p class="text-zinc-400 text-center">Nenhuma playlist criada.</p>`;
+                    return;
+                }
+                const fragment = document.createDocumentFragment();
+                this.state.playlists.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 rounded-lg hover:bg-zinc-700 cursor-pointer';
+                    div.textContent = p.name;
+                    div.dataset.playlistId = p.id;
+                    fragment.appendChild(div);
+                });
+                this.dom.playlistSelectionList.appendChild(fragment);
+            },
+        };
+
+        App.init();
+    });
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+<script src="song-list.js"></script>
 </body>
 </html>
-
-
-
