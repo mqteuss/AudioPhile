@@ -306,7 +306,7 @@
                 navButtons: document.querySelectorAll('.nav-btn'),
                 views: document.querySelectorAll('.view'),
                 addMusicBtn: document.getElementById('add-music-btn'),
-                musicFolderInput: document.getElementById('music-folder-input'), // NOVO
+                musicFolderInput: document.getElementById('music-folder-input'),
                 songList: document.getElementById('song-list'),
                 libraryEmptyState: document.getElementById('library-empty-state'),
                 songItemTemplate: document.getElementById('song-item-template'),
@@ -340,19 +340,28 @@
 
             audio: new Audio(),
 
+            // **** ALTERAÇÃO #1: Lógica de inicialização modificada ****
             async init() {
-                this.registerServiceWorker(); // NOVO
+                this.registerServiceWorker();
                 await this.initDB();
                 this.bindEvents();
+                
+                // Primeiro, carrega as músicas do banco de dados local
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
+
+                // Se, E SOMENTE SE, não houver músicas, busca da pasta /Musics
+                if (this.state.songs.length === 0) {
+                    console.log("🔎 Nenhuma música no banco. Buscando da pasta /Musics...");
+                    await this.loadFromServerFolder();
+                }
+
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
                 this.audio.volume = 1; 
                 this.switchView('player-view');
             },
             
-            // NOVO: Registra o Service Worker
             registerServiceWorker() {
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js')
@@ -370,11 +379,8 @@
             },
 
             bindEvents() {
-                // ALTERADO: O botão agora clica no input de arquivo
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
-                // ALTERADO: O evento de adicionar musicas agora vem do input
                 this.dom.musicFolderInput.addEventListener('change', (e) => this.addMusicFiles(e.target.files));
-
                 this.dom.playPauseBtn.addEventListener('click', (e) => { this.togglePlayPause(); this.animateIcon(e.currentTarget); });
                 this.dom.nextBtn.addEventListener('click', (e) => { this.changeTrack('next'); this.animateIcon(e.currentTarget); });
                 this.dom.prevBtn.addEventListener('click', (e) => { this.changeTrack('prev'); this.animateIcon(e.currentTarget); });
@@ -395,7 +401,6 @@
                 });
 
                 this.dom.searchInput.addEventListener('input', (e) => this.filterSongList(e.target.value));
-                
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(true));
                 this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.createPlaylist());
@@ -426,7 +431,6 @@
                 });
 
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
-                
                 this.dom.songList.addEventListener('click', (e) => this.handleSongListClick(e, this.state.songs));
                 this.dom.playlistSongList.addEventListener('click', (e) => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -461,6 +465,40 @@
                 }
             },
 
+            // **** ALTERAÇÃO #2: Função adicionada do song-list.js ****
+            // 🚀 Carrega músicas diretamente do servidor (GitHub Pages)
+            async loadFromServerFolder() {
+                try {
+                    // 🔧 ATENÇÃO: Você deve atualizar esta lista com os nomes exatos dos seus arquivos na pasta /Musics
+                    const musicFiles = [
+                        "505-ArcticMonkeys.mp3",
+                        "Musics/Daft Punk - Get Lucky.mp3",
+                        "Musics/Queen - Bohemian Rhapsody.mp3"
+                    ];
+
+                    for (const path of musicFiles) {
+                        const response = await fetch(path);
+                        if (!response.ok) {
+                            console.warn(`Arquivo não encontrado: ${path}`);
+                            continue;
+                        }
+
+                        const blob = await response.blob();
+                        const file = new File([blob], path.split('/').pop(), { type: blob.type });
+
+                        const metadata = await this.readAudioMetadata(file);
+                        const song = { file, ...metadata };
+                        await this.saveSongToDB(song);
+                    }
+
+                    // Recarrega as músicas do DB para a interface ser atualizada
+                    await this.loadSongsFromDB();
+                    console.log("🎶 Músicas carregadas automaticamente da pasta /Musics!");
+
+                } catch (error) {
+                    console.error("Erro ao carregar músicas do servidor:", error);
+                }
+            },
 
             switchView(viewId) {
                 this.dom.views.forEach(v => v.classList.toggle('active', v.id === viewId));
@@ -692,7 +730,6 @@
                 });
             },
 
-            // ALTERADO: Função agora aceita uma lista de arquivos
             async addMusicFiles(files) {
                 try {
                     const supportedExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a'];
@@ -863,7 +900,5 @@
         App.init();
     });
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
-<script src="song-list.js"></script>
-</body>
+    </body>
 </html>
