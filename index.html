@@ -10,7 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,7 +36,7 @@
             transition: background-image 0.7s ease-in-out;
             z-index: -1;
         }
-        
+
         #progress-bar {
             -webkit-appearance: none;
             appearance: none;
@@ -105,7 +105,7 @@
         #progress-bar:focus::-moz-range-thumb {
              background: #1DB954;
         }
-        
+
         .view {
             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
             position: absolute;
@@ -118,7 +118,7 @@
             transform: scale(0.98);
             pointer-events: none;
         }
-        
+
         .repeat-mode-one::after {
             content: '1';
             position: absolute;
@@ -133,7 +133,7 @@
             line-height: 12px;
             text-align: center;
         }
-        
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
@@ -159,11 +159,11 @@
 <body class="bg-black antialiased overflow-hidden">
 
     <div id="app-background"></div>
-    
+
     <input type="file" id="music-folder-input" webkitdirectory directory multiple class="hidden">
 
     <main id="app-content" class="h-screen w-screen relative">
-        
+
         <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
             <div class="w-full max-w-sm">
                 <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=AudioPhile" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
@@ -208,7 +208,7 @@
             </div>
             <ul id="song-list" class="space-y-1 mt-4"></ul>
         </div>
-        
+
         <div id="playlists-view" class="view p-6 md:p-8">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
               <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
@@ -222,7 +222,7 @@
             <ul id="playlist-song-list" class="space-y-1"></ul>
         </div>
     </main>
-    
+
     <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
         <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
             <i class="fas fa-search text-xl"></i>
@@ -241,7 +241,7 @@
             <span class="text-xs">Criar</span>
         </button>
     </nav>
-    
+
     <div id="create-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <h2 class="text-xl font-bold text-center mb-4">Criar nova playlist</h2>
@@ -286,7 +286,7 @@
             <button class="delete-playlist-btn text-zinc-500 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-trash"></i></button>
         </div>
     </template>
-    
+
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const App = {
@@ -340,28 +340,26 @@
 
             audio: new Audio(),
 
-            // **** ALTERAÇÃO #1: Lógica de inicialização modificada ****
+            // **** LÓGICA DE INICIALIZAÇÃO ATUALIZADA ****
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
                 this.bindEvents();
-                
-                // Primeiro, carrega as músicas do banco de dados local
+
+                // 1. Carrega as músicas já salvas no navegador
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
 
-                // Se, E SOMENTE SE, não houver músicas, busca da pasta /Musics
-                if (this.state.songs.length === 0) {
-                    console.log("🔎 Nenhuma música no banco. Buscando da pasta /Musics...");
-                    await this.loadFromServerFolder();
-                }
+                // 2. SEMPRE tenta sincronizar com a pasta do servidor
+                console.log("🔄 Sincronizando com a pasta /Musics...");
+                await this.syncWithServerFolder();
 
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
                 this.audio.volume = 1; 
                 this.switchView('player-view');
             },
-            
+
             registerServiceWorker() {
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js')
@@ -406,7 +404,7 @@
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.createPlaylist());
                 this.dom.createPlaylistModal.addEventListener('click', (e) => { if(e.target === this.dom.createPlaylistModal) this.showPlaylistModal(false); });
                 this.dom.addToPlaylistModal.addEventListener('click', (e) => { if(e.target === this.dom.addToPlaylistModal) this.showAddToPlaylistModal(false); });
-                
+
                 this.dom.playlistSelectionList.addEventListener('click', (e) => {
                     const listItem = e.target.closest('[data-playlist-id]');
                     if(listItem) {
@@ -418,7 +416,7 @@
                  this.dom.playlistGrid.addEventListener('click', e => {
                     const deleteBtn = e.target.closest('.delete-playlist-btn');
                     const clickableArea = e.target.closest('.playlist-clickable-area');
-                    
+
                     if (deleteBtn) {
                         const playlistEntry = e.target.closest('.playlist-item-grid-entry');
                         const playlistId = parseInt(playlistEntry.dataset.id);
@@ -440,11 +438,11 @@
                     }
                 });
             },
-            
+
             handleSongListClick(event, songSourceList, isPlaylistContext = false) {
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
-                
+
                 const songId = parseInt(songItem.dataset.songId);
                 const actionBtn = event.target.closest('.playlist-action-btn');
 
@@ -458,18 +456,17 @@
                 } else if (event.target.closest('.clickable-area')) {
                      this.state.playQueue = [...songSourceList]; 
                      const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
-                     
+
                      const globalIndex = this.state.songs.findIndex(s => s.id === songId);
                      this.loadSong(globalIndex, true, queueIndex);
                      this.switchView('player-view');
                 }
             },
 
-            // **** ALTERAÇÃO #2: Função adicionada do song-list.js ****
-            // 🚀 Carrega músicas diretamente do servidor (GitHub Pages)
-            async loadFromServerFolder() {
+            // **** ANTIGA 'loadFromServerFolder' RENOMEADA E ATUALIZADA ****
+            // 🚀 Sincroniza a lista de músicas do servidor com o banco de dados local
+            async syncWithServerFolder() {
                 try {
-                                                            // 🔧 ATENÇÃO: Lista atualizada com os nomes exatos dos seus arquivos.
                     const musicFiles = [
                         "Musics/505-ArcticMonkeys.mp3",
                         "Musics/Art Deco(MP3_128K).mp3",
@@ -480,30 +477,44 @@
                         "Musics/Matt Maeson - Put It on Me(MP3_128K).mp3",
                         "Musics/Sweater Weather(MP3_128K).mp3",
                         "Musics/Your Rarest of Flowers(MP3_128K).mp3"
-
                     ];
 
+                    // Pega o nome dos arquivos que já estão salvos no IndexedDB
+                    const existingFileNames = this.state.songs.map(song => song.file.name);
+                    let newSongsAdded = false;
+
                     for (const path of musicFiles) {
-                        const response = await fetch(path);
-                        if (!response.ok) {
-                            console.warn(`Arquivo não encontrado: ${path}`);
-                            continue;
+                        const fileName = path.split('/').pop();
+
+                        // Se a música da lista do servidor NÃO existir no banco, adiciona ela
+                        if (!existingFileNames.includes(fileName)) {
+                            newSongsAdded = true;
+                            console.log(`➕ Adicionando nova música: ${fileName}`);
+                            
+                            const response = await fetch(path);
+                            if (!response.ok) {
+                                console.warn(`Arquivo não encontrado no servidor: ${path}`);
+                                continue;
+                            }
+
+                            const blob = await response.blob();
+                            const file = new File([blob], fileName, { type: blob.type });
+                            const metadata = await this.readAudioMetadata(file);
+                            const song = { file, ...metadata };
+                            await this.saveSongToDB(song);
                         }
-
-                        const blob = await response.blob();
-                        const file = new File([blob], path.split('/').pop(), { type: blob.type });
-
-                        const metadata = await this.readAudioMetadata(file);
-                        const song = { file, ...metadata };
-                        await this.saveSongToDB(song);
                     }
 
-                    // Recarrega as músicas do DB para a interface ser atualizada
-                    await this.loadSongsFromDB();
-                    console.log("🎶 Músicas carregadas automaticamente da pasta /Musics!");
+                    // Se novas músicas foram adicionadas, recarrega a lista do DB para atualizar a interface
+                    if (newSongsAdded) {
+                        console.log("🎶 Biblioteca atualizada. Recarregando lista de músicas...");
+                        await this.loadSongsFromDB();
+                    } else {
+                        console.log("✅ Biblioteca já está atualizada.");
+                    }
 
                 } catch (error) {
-                    console.error("Erro ao carregar músicas do servidor:", error);
+                    console.error("Erro ao sincronizar músicas do servidor:", error);
                 }
             },
 
@@ -519,12 +530,12 @@
 
             loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
                 if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
-                
+
                 this.state.currentSongIndex = globalIndex;
                 const song = this.state.songs[globalIndex];
-                
+
                 this.state.currentQueueIndex = queueIndex !== -1 ? queueIndex : -1;
-                
+
                 this.audio.src = URL.createObjectURL(song.file);
                 this.updatePlayerUI(song);
 
@@ -568,12 +579,12 @@
                         ? (currentIndex + 1) % source.length
                         : (currentIndex - 1 + source.length) % source.length;
                 }
-                
+
                 const nextSong = source[newQueueIndex];
                 const globalIndex = this.state.songs.findIndex(s => s.id === nextSong.id);
                 this.loadSong(globalIndex, true, newQueueIndex);
             },
-            
+
             handleSongEnd() {
                 if (this.state.repeatMode === 'one') {
                     this.audio.currentTime = 0;
@@ -597,7 +608,7 @@
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
-            
+
             updateProgress() {
                 const { duration, currentTime } = this.audio;
                 if (duration) {
@@ -628,16 +639,16 @@
                 if (this.state.repeatMode === 'all') this.dom.repeatBtn.classList.add('text-green-500');
                 else if (this.state.repeatMode === 'one') this.dom.repeatBtn.classList.add('text-green-500', 'repeat-mode-one');
             },
-            
+
             toggleShuffle() {
                 this.state.isShuffle = !this.state.isShuffle;
                 this.updateShuffleButtonUI();
             },
-            
+
             updateShuffleButtonUI() {
                 this.dom.shuffleBtn.classList.toggle('text-green-500', this.state.isShuffle);
             },
-            
+
             filterSongList(term) {
                 const lowerCaseTerm = term.toLowerCase().trim();
                 const songItems = this.dom.songList.querySelectorAll('.song-item');
@@ -648,7 +659,7 @@
                     item.style.display = isVisible ? 'flex' : 'none';
                 });
             },
-            
+
             showPlaylistModal(show) {
                 if(show) {
                     this.dom.createPlaylistModal.classList.remove('opacity-0', 'pointer-events-none');
@@ -740,7 +751,7 @@
             async addMusicFiles(files) {
                 try {
                     const supportedExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a'];
-                    
+
                     for (const file of files) {
                         const isSupported = supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
                         if (isSupported) {
@@ -774,7 +785,7 @@
                     });
                 });
             },
-            
+
             async saveSongToDB(song) {
                 if (!this.db) await this.initDB();
                 return new Promise((resolve, reject) => {
@@ -800,7 +811,7 @@
                     request.onerror = reject;
                  });
             },
-            
+
             async savePlaylistToDB(playlist) {
                 return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(['playlists'], 'readwrite');
@@ -836,7 +847,7 @@
             renderSongList(songsToRender = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 container.innerHTML = '';
                 const hasSongs = songsToRender.length > 0;
-                
+
                 if (container === this.dom.songList) {
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
@@ -847,17 +858,17 @@
                         const item = this.dom.songItemTemplate.content.cloneNode(true);
                         const li = item.querySelector('.song-item');
                         const actionBtn = item.querySelector('.playlist-action-btn i');
-                        
+
                         li.dataset.songId = song.id;
                         item.querySelector('.song-cover').src = song.coverUrl || 'https://placehold.co/100x100/27272a/3f3f46?text=?';
                         item.querySelector('.song-title').textContent = song.title;
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
-                        
+
                         if (isPlaylistContext) {
                             actionBtn.classList.remove('fa-plus');
                             actionBtn.classList.add('fa-trash-can');
                         }
-                        
+
                         fragment.appendChild(item);
                     });
                     container.appendChild(fragment);
