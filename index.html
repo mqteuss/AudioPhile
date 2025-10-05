@@ -910,5 +910,21 @@
         App.init();
     });
     </script>
+<script>
+    // Verifica se o navegador suporta Service Worker
+    if ('serviceWorker' in navigator) {
+      // O evento 'load' garante que o registro só ocorre após o carregamento da página
+      window.addEventListener('load', () => {
+        // Registra o Service Worker, especificando o caminho do seu arquivo (sw.js)
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registrado com sucesso:', registration.scope);
+          })
+          .catch(err => {
+            console.error('Falha no registro do ServiceWorker:', err);
+          });
+      });
+    }
+</script>
     </body>
 </html>
