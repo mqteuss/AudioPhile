@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spobrefy - Seu Web Player Moderno</title>
+    <title>Spobrefy</title>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1DB954"/>
@@ -16,8 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser@2.5.10/dist/music-metadata-browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 
     <style>
         body {
@@ -472,8 +471,7 @@
                         "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_128K).mp3",
                         "Musics/Matt Maeson - Put It on Me(MP3_128K).mp3",
                         "Musics/Sweater Weather(MP3_128K).mp3",
-                        "Musics/Your Rarest of Flowers(MP3_128K).mp3", 
-                        "Musics/No. 1 Party Anthem(M4A_128K).m4a"
+                        "Musics/Your Rarest of Flowers(MP3_128K).mp3"
                     ];
                     
                     const existingFileNames = this.state.songs.map(song => song.file.name);
@@ -760,35 +758,24 @@
                 }
             },
 
-            // ===== FUNÇÃO DE LER METADADOS MODIFICADA =====
-            async readAudioMetadata(file) {
-                try {
-                    // Usa a nova biblioteca (disponível globalmente como "mm")
-                    const metadata = await mm.parseBlob(file);
-                    const { common } = metadata;
-                    let coverUrl = null;
-
-                    if (common.picture && common.picture.length > 0) {
-                        const picture = common.picture[0];
-                        const blob = new Blob([picture.data], { type: picture.format });
-                        coverUrl = URL.createObjectURL(blob);
-                    }
-
-                    return {
-                        title: common.title || file.name.replace(/\.[^/.]+$/, ""),
-                        artist: common.artist || "Artista Desconhecido",
-                        coverUrl: coverUrl
-                    };
-
-                } catch (error) {
-                    console.warn('Erro ao ler metadados com music-metadata-browser:', error);
-                    // Retorno padrão em caso de falha
-                    return {
-                        title: file.name.replace(/\.[^/.]+$/, ""),
-                        artist: "Artista Desconhecido",
-                        coverUrl: null
-                    };
-                }
+            readAudioMetadata(file) {
+                return new Promise((resolve) => {
+                    jsmediatags.read(file, {
+                        onSuccess: (tag) => {
+                            const { title, artist, picture } = tag.tags;
+                            let coverUrl = null;
+                            if (picture) {
+                                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
+                                coverUrl = `data:${picture.format};base64,${base64String}`;
+                            }
+                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, coverUrl });
+                        },
+                        onError: (error) => {
+                            console.warn('Erro ao ler metadados:', error);
+                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
+                        }
+                    });
+                });
             },
 
             async saveSongToDB(song) {
