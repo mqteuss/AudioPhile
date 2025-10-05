@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AudioPhile - Seu Web Player Moderno</title>
+    <title>Spobrefy - Seu Web Player Moderno</title>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1DB954"/>
@@ -166,7 +166,7 @@
 
         <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
             <div class="w-full max-w-sm">
-                <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=AudioPhile" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
+                <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=Spobrefy" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
                 <div class="text-center my-8">
                     <h2 id="track-title" class="text-2xl font-bold truncate">Bem-vindo!</h2>
                     <h3 id="track-artist" class="text-md text-zinc-400 truncate">Adicione suas músicas</h3>
@@ -339,18 +339,15 @@
             },
 
             audio: new Audio(),
-
-            // **** LÓGICA DE INICIALIZAÇÃO ATUALIZADA ****
+            
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
                 this.bindEvents();
 
-                // 1. Carrega as músicas já salvas no navegador
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
 
-                // 2. SEMPRE tenta sincronizar com a pasta do servidor
                 console.log("🔄 Sincronizando com a pasta /Musics...");
                 await this.syncWithServerFolder();
 
@@ -462,9 +459,7 @@
                      this.switchView('player-view');
                 }
             },
-
-            // **** ANTIGA 'loadFromServerFolder' RENOMEADA E ATUALIZADA ****
-            // 🚀 Sincroniza a lista de músicas do servidor com o banco de dados local
+            
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
@@ -478,15 +473,13 @@
                         "Musics/Sweater Weather(MP3_128K).mp3",
                         "Musics/Your Rarest of Flowers(MP3_128K).mp3"
                     ];
-
-                    // Pega o nome dos arquivos que já estão salvos no IndexedDB
+                    
                     const existingFileNames = this.state.songs.map(song => song.file.name);
                     let newSongsAdded = false;
 
                     for (const path of musicFiles) {
                         const fileName = path.split('/').pop();
-
-                        // Se a música da lista do servidor NÃO existir no banco, adiciona ela
+                        
                         if (!existingFileNames.includes(fileName)) {
                             newSongsAdded = true;
                             console.log(`➕ Adicionando nova música: ${fileName}`);
@@ -505,7 +498,6 @@
                         }
                     }
 
-                    // Se novas músicas foram adicionadas, recarrega a lista do DB para atualizar a interface
                     if (newSongsAdded) {
                         console.log("🎶 Biblioteca atualizada. Recarregando lista de músicas...");
                         await this.loadSongsFromDB();
@@ -604,7 +596,7 @@
             updatePlayerUI(song) {
                 this.dom.trackTitle.textContent = song.title || 'Título Desconhecido';
                 this.dom.trackArtist.textContent = song.artist || 'Artista Desconhecido';
-                const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=AudioPhile';
+                const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
@@ -730,7 +722,7 @@
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open('AudioPhileDB', 2);
+                    const request = indexedDB.open('SpobrefyDB', 2);
                     request.onerror = (event) => reject("Erro ao abrir o DB");
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
