@@ -358,6 +358,9 @@
                 await this.initDB();
                 this.bindEvents();
 
+                // 1. CHAMAR A NOVA FUNÇÃO DE SETUP DA MEDIA SESSION
+                this.setupMediaSession();
+
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
                 
@@ -463,6 +466,24 @@
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
             
+            // 2. NOVA FUNÇÃO PARA CONFIGURAR OS HANDLERS DA MEDIA SESSION
+            setupMediaSession() {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.setActionHandler('play', () => {
+                        this.play();
+                    });
+                    navigator.mediaSession.setActionHandler('pause', () => {
+                        this.pause();
+                    });
+                    navigator.mediaSession.setActionHandler('nexttrack', () => {
+                        this.changeTrack('next');
+                    });
+                    navigator.mediaSession.setActionHandler('previoustrack', () => {
+                        this.changeTrack('prev');
+                    });
+                }
+            },
+
             handleTouchStart(event) {
                 const target = event.target.closest('button, input[type="range"], .progress-container');
                 if (target) {
@@ -719,6 +740,20 @@
                 }
 
                 this.updatePlayerUI(song);
+
+                // 3. ATUALIZAR OS METADADOS DA MEDIA SESSION
+                if ('mediaSession' in navigator) {
+                    const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: song.title,
+                        artist: song.artist || 'Artista Desconhecido',
+                        album: 'Spobrefy',
+                        artwork: [
+                            { src: coverUrl, sizes: '512x512', type: 'image/jpeg' },
+                        ]
+                    });
+                }
+                
                 if (shouldPlay) this.play();
             },
             
@@ -729,12 +764,22 @@
                     .then(() => this.savePlaybackState())
                     .catch(e => console.error("Erro ao tocar:", e));
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
+
+                // 4. ATUALIZAR O ESTADO DE REPRODUÇÃO DA MEDIA SESSION
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'playing';
+                }
             },
 
             pause() {
                 this.state.isPlaying = false;
                 this.audio.pause();
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>';
+
+                // 4. ATUALIZAR O ESTADO DE REPRODUÇÃO DA MEDIA SESSION
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
             },
 
             togglePlayPause() {
@@ -844,6 +889,15 @@
                     this.dom.durationEl.textContent = this.formatTime(duration);
                 }
                 this.dom.currentTimeEl.textContent = this.formatTime(currentTime);
+
+                // 5. (BÔNUS) ATUALIZAR A POSIÇÃO DA MÚSICA NA NOTIFICAÇÃO
+                if ('mediaSession' in navigator && this.audio.duration) {
+                    navigator.mediaSession.setPositionState({
+                        duration: this.audio.duration,
+                        playbackRate: this.audio.playbackRate,
+                        position: this.audio.currentTime,
+                    });
+                }
             },
 
             formatTime(seconds) {
@@ -1018,7 +1072,6 @@
                 });
             },
 
-            // FUNÇÃO ATUALIZADA CONFORME SUA SOLICITAÇÃO
             readRemoteAudioMetadata(url) {
                 return fetch(url)
                     .then(response => {
@@ -1032,7 +1085,6 @@
                                 let coverUrl = null;
 
                                 if (picture) {
-                                    // Corrigido para funcionar com a nova sintaxe do fromCharCode
                                     const base64String = btoa(String.fromCharCode(...new Uint8Array(picture.data)));
                                     coverUrl = `data:${picture.format};base64,${base64String}`;
                                 }
