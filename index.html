@@ -605,7 +605,6 @@
                 });
             },
 
-            // NOVO: syncWithServerFolder agora lê metadados remotos
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
@@ -650,11 +649,10 @@
                             changesMade = true;
                             console.log(`Lendo metadados de: ${path.split('/').pop()}`);
                             
-                            // Em vez de analisar o nome do arquivo, lemos os metadados da URL
                             const metadata = await this.readRemoteAudioMetadata(path);
 
                             const song = {
-                                ...metadata, // Inclui title, artist, coverUrl
+                                ...metadata,
                                 path: path,
                                 isOffline: false,
                             };
@@ -1000,7 +998,6 @@
                 }
             },
             
-            // Esta função continua a mesma, para ler arquivos LOCAIS
             readAudioMetadata(file) {
                 return new Promise((resolve) => {
                     jsmediatags.read(file, {
@@ -1021,28 +1018,51 @@
                 });
             },
 
-            // NOVA FUNÇÃO: Para ler metadados de uma URL remota eficientemente
+            // FUNÇÃO ATUALIZADA CONFORME SUA SOLICITAÇÃO
             readRemoteAudioMetadata(url) {
-                return new Promise((resolve) => {
-                    jsmediatags.read(url, {
-                        onSuccess: (tag) => {
-                            const { title, artist, picture } = tag.tags;
-                            let coverUrl = null;
-                            if (picture) {
-                                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
-                                coverUrl = `data:${picture.format};base64,${base64String}`;
+                return fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Erro ao carregar ${url}`);
+                        return response.blob();
+                    })
+                    .then(blob => new Promise(resolve => {
+                        jsmediatags.read(blob, {
+                            onSuccess: (tag) => {
+                                const { title, artist, picture } = tag.tags;
+                                let coverUrl = null;
+
+                                if (picture) {
+                                    // Corrigido para funcionar com a nova sintaxe do fromCharCode
+                                    const base64String = btoa(String.fromCharCode(...new Uint8Array(picture.data)));
+                                    coverUrl = `data:${picture.format};base64,${base64String}`;
+                                }
+
+                                const fileName = url.split('/').pop();
+                                resolve({
+                                    title: title || fileName.replace(/\.[^/.]+$/, ""),
+                                    artist: artist || "Artista Desconhecido",
+                                    coverUrl,
+                                });
+                            },
+                            onError: () => {
+                                const fileName = url.split('/').pop();
+                                resolve({
+                                    title: fileName.replace(/\.[^/.]+$/, ""),
+                                    artist: "Artista Desconhecido",
+                                    coverUrl: null,
+                                });
                             }
-                            const fileName = url.split('/').pop();
-                            resolve({ title: title || fileName.replace(/\.[^/.]+$/, ""), artist: artist || "Artista Desconhecido", coverUrl });
-                        },
-                        onError: (error) => {
-                            console.warn(`Erro ao ler metadados de ${url}:`, error);
-                            const fileName = url.split('/').pop();
-                            // Retorna um fallback para não quebrar a aplicação
-                            resolve({ title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
-                        }
+                        });
+                    }))
+                    .catch(error => {
+                        console.error("Erro ao processar arquivo remoto:", error);
+                        const fileName = url.split('/').pop();
+                        return {
+                            title: fileName.replace(/\.[^/.]+$/, ""),
+                            artist: "Artista Desconhecido",
+                            coverUrl: null,
+                        };
                     });
-                });
             },
             
             async saveSongMetadataToDB(song, returnId = false) {
