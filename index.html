@@ -273,6 +273,9 @@
                     <p class="song-artist text-sm text-zinc-400 truncate"></p>
                 </div>
             </div>
+            <button class="download-btn w-10 h-10 flex-shrink-0 flex items-center justify-center text-zinc-400 hover:text-white" title="Download">
+                <i class="fas fa-cloud-arrow-down text-lg"></i>
+            </button>
             <p class="song-duration text-sm text-zinc-400 ml-auto pr-2"></p>
             <button class="playlist-action-btn text-zinc-400 hover:text-white p-2"><i class="fas fa-plus"></i></button>
         </li>
@@ -356,19 +359,18 @@
                 await this.initDB();
                 this.bindEvents();
 
-                await this.loadSongsFromDB();
-                await this.loadPlaylistsFromDB();
-                
-                await this.loadPlaybackState();
-
-                console.log("🔄 Sincronizando com a pasta /Musics...");
+                // A função syncWithServerFolder agora carrega as músicas do DB e da lista
+                console.log("🔄 Sincronizando catálogo de músicas...");
                 await this.syncWithServerFolder();
+
+                await this.loadPlaylistsFromDB();
+                await this.loadPlaybackState();
 
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
 
-                if (this.state.currentSongIndex === -1) {
-                    this.switchView('player-view');
+                if (this.state.currentSongIndex === -1 && this.state.songs.length > 0) {
+                    this.switchView('search-view'); // Começa na busca para ver a lista
                 }
             },
 
@@ -504,124 +506,71 @@
                 this.state.touchEndX = 0;
             },
 
+            // PASSO 4: FUNÇÃO DE CLIQUE MODIFICADA
             handleSongListClick(event, songSourceList, isPlaylistContext = false) {
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
 
-                const songId = parseInt(songItem.dataset.songId);
+                const songPath = songItem.dataset.songPath;
+                const song = this.state.songs.find(s => s.path === songPath);
+                if (!song) return;
+
+                const downloadBtn = event.target.closest('.download-btn');
                 const actionBtn = event.target.closest('.playlist-action-btn');
 
-                if (actionBtn) {
-                    if(isPlaylistContext) {
-                        this.removeSongFromPlaylist(songId, this.state.currentPlaylistId);
+                if (downloadBtn) {
+                    this.downloadSong(songPath);
+                } else if (actionBtn) {
+                    if (!song.id) {
+                        alert("Você precisa baixar a música antes de adicioná-la a uma playlist.");
+                        return;
+                    }
+                    if (isPlaylistContext) {
+                        this.removeSongFromPlaylist(song.id, this.state.currentPlaylistId);
                     } else {
-                        this.state.songIdToAddToPlaylist = songId;
+                        this.state.songIdToAddToPlaylist = song.id;
                         this.showAddToPlaylistModal(true);
                     }
                 } else if (event.target.closest('.clickable-area')) {
-                     this.state.playQueue = [...songSourceList]; 
-                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
-
-                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
-                     this.loadSong(globalIndex, true, queueIndex);
-                     this.switchView('player-view');
+                    this.state.playQueue = [...songSourceList];
+                    const queueIndex = this.state.playQueue.findIndex(s => s.path === songPath);
+                    this.loadSong(song, true, queueIndex);
+                    this.switchView('player-view');
                 }
             },
 
+            // PASSO 2: FUNÇÃO DE SINCRONIZAÇÃO MODIFICADA
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
-                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3",
-                        "Musics/505(MP3_160K).mp3",
-                        "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3",
-                        "Musics/Art Deco(MP3_160K).mp3",
-                        "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3",
-                        "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3",
-                        "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3",
-                        "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3",
-                        "Musics/I Wanna Be Yours(MP3_160K).mp3",
-                        "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3",
-                        "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3",
-                        "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3",
-                        "Musics/Lied To(MP3_160K).mp3",
-                        "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3",
-                        "Musics/No. 1 Party Anthem(MP3_160K).mp3",
-                        "‎Musics/RealestK - Selfie (Official Audio)(MP3_160K).mp3",
-                        "Musics/Sweater Weather(MP3_160K).mp3",
-                        "Musics/Your Rarest of Flowers(MP3_160K).mp3",
-                        "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3",
-                        "Musics/R U Mine_(MP3_160K).mp3",
-                        "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3",
-                        "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3",
-                        "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3",
-                        "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3",
-                        "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3",
-                        "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3",
-                        "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3",
-                        "Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3",
-                        "Musics/I Love You_ I_m Sorry(MP3_160K).mp3"       
+                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3", "Musics/505(MP3_160K).mp3", "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3", "Musics/Art Deco(MP3_160K).mp3", "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3", "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3", "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3", "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3", "Musics/I Wanna Be Yours(MP3_160K).mp3", "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3", "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3", "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3", "Musics/Lied To(MP3_160K).mp3", "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3", "Musics/No. 1 Party Anthem(MP3_160K).mp3", "‎Musics/RealestK - Selfie (Official Audio)(MP3_160K).mp3", "Musics/Sweater Weather(MP3_160K).mp3", "Musics/Your Rarest of Flowers(MP3_160K).mp3", "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3", "Musics/R U Mine_(MP3_160K).mp3", "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3", "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3", "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3", "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3", "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3", "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3", "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3", "Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3", "Musics/I Love You_ I_m Sorry(MP3_160K).mp3"
                     ];
 
-                    let changesMade = false;
-                    const serverFileNames = musicFiles.map(path => path.split('/').pop());
-                    const localSongs = this.state.songs;
+                    const songsFromDB = await this.getAllSongsFromDB();
+                    const songsFromDBMap = new Map(songsFromDB.map(song => [song.path, song]));
 
-                    const localFileNames = localSongs.map(song => song.file.name);
-                    for (const path of musicFiles) {
-                        const fileName = path.split('/').pop();
-                        if (!localFileNames.includes(fileName)) {
-                            console.log(`➕ Adicionando nova música: ${fileName}`);
-                            changesMade = true;
-                            const response = await fetch(path);
-                            if (!response.ok) {
-                                console.warn(`Arquivo não encontrado no servidor: ${path}`);
-                                continue;
-                            }
-                            const blob = await response.blob();
-                            const file = new File([blob], fileName, { type: blob.type });
-                            const metadata = await this.readAudioMetadata(file);
-                            const song = { file, ...metadata };
-                            await this.saveSongToDB(song);
+                    const catalogPromises = musicFiles.map(async (path) => {
+                        if (songsFromDBMap.has(path)) {
+                            const existingSong = songsFromDBMap.get(path);
+                            return { ...existingSong, isOffline: true };
+                        } else {
+                            const metadata = await this.readAudioMetadata(path);
+                            return {
+                                path: path,
+                                title: metadata.title,
+                                artist: metadata.artist,
+                                coverUrl: metadata.coverUrl,
+                                isOffline: false
+                            };
                         }
-                    }
+                    });
 
-                    const songsToDelete = localSongs.filter(song => !serverFileNames.includes(song.file.name));
-
-                    if (songsToDelete.length > 0) {
-                        console.log(`🗑️ Removendo ${songsToDelete.length} músicas obsoletas...`);
-                        changesMade = true;
-                        const deletedSongIds = songsToDelete.map(s => s.id);
-
-                        for (const song of songsToDelete) {
-                            console.log(`   - Deletando: ${song.file.name}`);
-                            await this.deleteSongFromDB(song.id);
-                        }
-
-                        console.log('🧹 Limpando IDs de músicas removidas das playlists...');
-                        const playlistsToUpdate = this.state.playlists.filter(p => 
-                            p.songIds.some(id => deletedSongIds.includes(id))
-                        );
-
-                        for (const playlist of playlistsToUpdate) {
-                            const originalCount = playlist.songIds.length;
-                            playlist.songIds = playlist.songIds.filter(id => !deletedSongIds.includes(id));
-                            if (playlist.songIds.length < originalCount) {
-                                console.log(`   - Atualizando playlist "${playlist.name}"`);
-                                await this.savePlaylistToDB(playlist);
-                            }
-                        }
-                    }
-
-                    if (changesMade) {
-                        console.log("🎶 Biblioteca sincronizada. Recarregando dados...");
-                        await this.loadSongsFromDB();
-                        await this.loadPlaylistsFromDB();
-                    } else {
-                        console.log("✅ Biblioteca já está atualizada.");
-                    }
+                    this.state.songs = await Promise.all(catalogPromises);
+                    this.renderSongList();
+                    console.log("✅ Catálogo de músicas sincronizado.");
 
                 } catch (error) {
-                    console.error("Erro ao sincronizar músicas do servidor:", error);
+                    console.error("Erro ao sincronizar músicas:", error);
                 }
             },
 
@@ -635,22 +584,28 @@
                 });
             },
 
-            loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
-                if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
+            // PASSO 4: FUNÇÃO DE CARREGAR MÚSICA MODIFICADA
+            loadSong(song, shouldPlay = false, queueIndex = -1) {
+                const globalIndex = this.state.songs.findIndex(s => s.path === song.path);
+                if (globalIndex === -1) return;
 
                 this.state.currentSongIndex = globalIndex;
-                const song = this.state.songs[globalIndex];
-
                 this.state.currentQueueIndex = queueIndex;
 
-                this.audio.src = URL.createObjectURL(song.file);
-                this.updatePlayerUI(song);
+                if (song.isOffline && song.file) {
+                    console.log(`▶️ Tocando offline: ${song.title}`);
+                    this.audio.src = URL.createObjectURL(song.file);
+                } else {
+                    console.log(`🔗 Tocando online: ${song.title}`);
+                    this.audio.src = song.path;
+                }
 
+                this.updatePlayerUI(song);
                 if (shouldPlay) this.play();
             },
 
             play() {
-                if (this.state.songs.length === 0) return;
+                if (this.state.songs.length === 0 && !this.audio.src) return;
                 this.state.isPlaying = true;
                 this.audio.play()
                     .then(() => this.savePlaybackState())
@@ -667,7 +622,7 @@
             togglePlayPause() {
                 if (this.state.currentSongIndex === -1 && this.state.songs.length > 0) {
                      this.state.playQueue = [...this.state.songs];
-                     this.loadSong(0, true, 0);
+                     this.loadSong(this.state.songs[0], true, 0);
                 } else {
                     this.state.isPlaying ? this.pause() : this.play();
                 }
@@ -688,24 +643,30 @@
                         ? (currentIndex + 1) % source.length
                         : (currentIndex - 1 + source.length) % source.length;
                 }
-
-                const nextSong = source[newQueueIndex];
-                const globalIndex = this.state.songs.findIndex(s => s.id === nextSong.id);
-                this.loadSong(globalIndex, true, newQueueIndex);
+                
+                const nextSongInQueue = source[newQueueIndex];
+                this.loadSong(nextSongInQueue, true, newQueueIndex);
             },
 
             handleSongEnd() {
                 if (this.state.repeatMode === 'one') {
                     this.audio.currentTime = 0;
                     this.play();
-                } else {
+                } else if (this.state.repeatMode === 'all') {
                     this.changeTrack('next');
+                } else { // 'none'
+                    if (this.state.currentQueueIndex === this.state.playQueue.length - 1) {
+                        this.pause();
+                    } else {
+                        this.changeTrack('next');
+                    }
                 }
             },
             
             handleMetadataLoaded() {
                 this.updateProgress();
-                if (this.state.restoredState && this.state.songs[this.state.currentSongIndex]?.id === this.state.restoredState.songId) {
+                const song = this.state.songs[this.state.currentSongIndex];
+                if (this.state.restoredState && song?.id === this.state.restoredState.songId) {
                     this.audio.currentTime = this.state.restoredState.currentTime;
                     this.updateProgress(); 
                     this.state.restoredState = null;
@@ -715,7 +676,7 @@
             savePlaybackState() {
                 if (this.state.currentSongIndex === -1) return;
                 const song = this.state.songs[this.state.currentSongIndex];
-                if (!song) return;
+                if (!song || !song.id) return; // Só salva o estado de músicas offline com ID
 
                 const state = {
                     songId: song.id,
@@ -732,12 +693,13 @@
                         const savedState = JSON.parse(savedStateJSON);
                         
                         this.audio.volume = savedState.volume || 1;
-                        const songIndex = this.state.songs.findIndex(s => s.id === savedState.songId);
+                        // Encontra a música pelo ID, que só existe em músicas offline
+                        const song = this.state.songs.find(s => s.id === savedState.songId && s.isOffline);
 
-                        if (songIndex > -1) {
-                            console.log(`Restaurando estado: Música ID ${savedState.songId} no tempo ${this.formatTime(savedState.currentTime)}`);
+                        if (song) {
+                            console.log(`Restaurando estado: Música ${song.title} no tempo ${this.formatTime(savedState.currentTime)}`);
                             this.state.restoredState = savedState;
-                            this.loadSong(songIndex, false);
+                            this.loadSong(song, false);
                             this.switchView('player-view');
                         }
                     } catch (error) {
@@ -875,15 +837,17 @@
                 if(!playlist) return;
 
                 this.dom.playlistDetailsTitle.textContent = playlist.name;
-                const songsInPlaylist = this.state.songs.filter(song => playlist.songIds.includes(song.id));
+                const songsInPlaylist = this.state.songs.filter(song => song.isOffline && playlist.songIds.includes(song.id));
                 this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
                 this.switchView('playlist-details-view');
             },
 
+            // --- FUNÇÕES DE BANCO DE DADOS (DB) ---
             db: null,
+            // PASSO 2: SCHEMA DO DB MODIFICADO
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open('SpobrefyDB', 2);
+                    const request = indexedDB.open('SpobrefyDB', 3); // Versão incrementada para forçar onupgradeneeded
                     request.onerror = (event) => reject("Erro ao abrir o DB");
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
@@ -892,7 +856,10 @@
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
                         if (!db.objectStoreNames.contains('songs')) {
-                            db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
+                            // Mantemos o 'id' como chave principal para as playlists
+                            const songStore = db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
+                            // E criamos um índice único no 'path' para evitar duplicatas e buscar rápido
+                            songStore.createIndex('by_path', 'path', { unique: true });
                         }
                         if (!db.objectStoreNames.contains('playlists')) {
                             db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
@@ -902,26 +869,23 @@
             },
 
             async addMusicFiles(files) {
+                // Esta função continua funcionando para uploads manuais
                 try {
-                    const supportedExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a'];
-
                     for (const file of files) {
-                        const isSupported = supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                        if (isSupported) {
-                            const metadata = await this.readAudioMetadata(file);
-                            const song = { file, ...metadata };
-                            await this.saveSongToDB(song);
-                        }
+                        const metadata = await this.readAudioMetadata(file);
+                        const song = { file, ...metadata, path: `local/${file.name}` };
+                        await this.saveSongToDB(song);
                     }
-                    await this.loadSongsFromDB();
+                    await this.syncWithServerFolder(); // Re-sincroniza para atualizar a lista
                 } catch (error) {
                     console.error("Erro ao processar os arquivos:", error);
                 }
             },
-
-            readAudioMetadata(file) {
+            
+            // PASSO 2: FUNÇÃO readAudioMetadata MODIFICADA
+            readAudioMetadata(fileOrUrl) {
                 return new Promise((resolve) => {
-                    jsmediatags.read(file, {
+                    jsmediatags.read(fileOrUrl, {
                         onSuccess: (tag) => {
                             const { title, artist, picture } = tag.tags;
                             let coverUrl = null;
@@ -929,11 +893,13 @@
                                 const base64String = btoa(String.fromCharCode.apply(null, picture.data));
                                 coverUrl = `data:${picture.format};base64,${base64String}`;
                             }
-                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, coverUrl });
+                            const fileName = typeof fileOrUrl === 'string' ? fileOrUrl.split('/').pop() : fileOrUrl.name;
+                            resolve({ title: title || fileName.replace(/\.[^/.]+$/, ""), artist: artist || "Artista Desconhecido", coverUrl });
                         },
                         onError: (error) => {
-                            console.warn('Erro ao ler metadados:', error);
-                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
+                            const fileName = typeof fileOrUrl === 'string' ? fileOrUrl.split('/').pop() : fileOrUrl.name;
+                            console.warn('Erro ao ler metadados de:', fileName, error.type);
+                            resolve({ title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
                         }
                     });
                 });
@@ -944,8 +910,9 @@
                 return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(['songs'], 'readwrite');
                     const store = transaction.objectStore('songs');
+                    // 'add' ainda funciona bem com a chave 'id' auto-incrementada
                     const request = store.add(song);
-                    request.onsuccess = resolve;
+                    request.onsuccess = (event) => resolve(event.target.result); // Resolve com o novo ID
                     request.onerror = reject;
                 });
             },
@@ -960,17 +927,14 @@
                 });
             },
 
-            async loadSongsFromDB() {
+            // NOVA FUNÇÃO AUXILIAR
+            async getAllSongsFromDB() {
                 if (!this.db) await this.initDB();
                  return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(['songs'], 'readonly');
                     const store = transaction.objectStore('songs');
                     const request = store.getAll();
-                    request.onsuccess = (event) => {
-                        this.state.songs = event.target.result;
-                        this.renderSongList();
-                        resolve(this.state.songs);
-                    };
+                    request.onsuccess = (event) => resolve(event.target.result);
                     request.onerror = reject;
                  });
             },
@@ -1006,7 +970,50 @@
                     request.onerror = reject;
                 });
             },
+            
+            // PASSO 4: NOVA FUNÇÃO DE DOWNLOAD
+            async downloadSong(songPath) {
+                const songItem = document.querySelector(`[data-song-path="${songPath}"]`);
+                if (!songItem) return;
 
+                const downloadBtn = songItem.querySelector('.download-btn');
+                const downloadIcon = downloadBtn.querySelector('i');
+
+                downloadIcon.className = 'fas fa-spinner animate-spin';
+                downloadBtn.disabled = true;
+
+                try {
+                    const songDataOnline = this.state.songs.find(s => s.path === songPath);
+                    
+                    const response = await fetch(songDataOnline.path);
+                    const blob = await response.blob();
+                    const file = new File([blob], songDataOnline.path.split('/').pop(), { type: blob.type });
+
+                    const songToSave = {
+                        file,
+                        path: songDataOnline.path,
+                        title: songDataOnline.title,
+                        artist: songDataOnline.artist,
+                        coverUrl: songDataOnline.coverUrl,
+                    };
+
+                    const newId = await this.saveSongToDB(songToSave);
+                    
+                    const songIndex = this.state.songs.findIndex(s => s.path === songPath);
+                    this.state.songs[songIndex] = { ...songToSave, id: newId, isOffline: true };
+                    
+                    downloadIcon.className = 'fas fa-check text-green-500';
+                    downloadBtn.title = "Baixado";
+                    console.log(`'${songDataOnline.title}' baixada com sucesso!`);
+
+                } catch (error) {
+                    console.error("Erro ao baixar música:", error);
+                    downloadIcon.className = 'fas fa-cloud-arrow-down';
+                    downloadBtn.disabled = false;
+                }
+            },
+
+            // PASSO 3: FUNÇÃO DE RENDERIZAÇÃO MODIFICADA
             renderSongList(songsToRender = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 container.innerHTML = '';
                 const hasSongs = songsToRender.length > 0;
@@ -1021,15 +1028,32 @@
                         const item = this.dom.songItemTemplate.content.cloneNode(true);
                         const li = item.querySelector('.song-item');
                         const actionBtn = item.querySelector('.playlist-action-btn i');
+                        const downloadBtn = item.querySelector('.download-btn');
+                        const downloadIcon = downloadBtn.querySelector('i');
 
-                        li.dataset.songId = song.id;
+                        li.dataset.songPath = song.path;
                         item.querySelector('.song-cover').src = song.coverUrl || 'https://placehold.co/100x100/27272a/3f3f46?text=?';
                         item.querySelector('.song-title').textContent = song.title;
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                        
+                        // Esconde o botão de duração, já que não temos essa info para músicas online
+                        const durationEl = item.querySelector('.song-duration');
+                        if(durationEl) durationEl.style.display = 'none';
+
+                        if (song.isOffline) {
+                            downloadIcon.className = 'fas fa-check text-green-500';
+                            downloadBtn.title = "Baixado";
+                            downloadBtn.disabled = true;
+                        } else {
+                             downloadIcon.className = 'fas fa-cloud-arrow-down';
+                             downloadBtn.title = "Download";
+                             downloadBtn.disabled = false;
+                        }
 
                         if (isPlaylistContext) {
                             actionBtn.classList.remove('fa-plus');
                             actionBtn.classList.add('fa-trash-can');
+                            li.dataset.songId = song.id;
                         }
 
                         fragment.appendChild(item);
