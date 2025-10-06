@@ -111,6 +111,7 @@
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             overflow-y: auto;
+            padding-bottom: 128px;
         }
         .view:not(.active) {
             opacity: 0;
@@ -189,7 +190,7 @@
             </div>
         </div>
 
-        <div id="search-view" class="view p-6 md:p-8 pb-20">
+        <div id="search-view" class="view p-6 md:p-8">
             <h1 class="text-3xl font-bold mb-6">Buscar</h1>
             <div class="flex items-center gap-3 mb-6">
                 <div class="relative flex-grow">
@@ -208,20 +209,15 @@
             <ul id="song-list" class="space-y-1 mt-4"></ul>
         </div>
 
-        <div id="playlists-view" class="view p-6 md:p-8 pb-20">
+        <div id="playlists-view" class="view p-6 md:p-8">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
                <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
         </div>
 
-        <div id="playlist-details-view" class="view p-6 md:p-8 pb-20">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center min-w-0">
-                    <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
-                    <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
-                </div>
-                <button id="add-songs-to-playlist-btn" title="Adicionar Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-12 h-12 flex items-center justify-center rounded-lg ml-4">
-                    <i class="fas fa-plus text-xl"></i>
-                </button>
+        <div id="playlist-details-view" class="view p-6 md:p-8">
+            <div class="flex items-center mb-6">
+                <button id="back-to-playlists-btn" class="p-2 mr-2"><i class="fas fa-arrow-left text-xl"></i></button>
+                <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
             </div>
             <ul id="playlist-song-list" class="space-y-1"></ul>
         </div>
@@ -295,7 +291,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         const App = {
             dom: {
-                appContent: document.getElementById('app-content'),
                 background: document.getElementById('app-background'),
                 albumCover: document.getElementById('album-cover'),
                 trackTitle: document.getElementById('track-title'),
@@ -329,7 +324,6 @@
                 backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
                 playlistDetailsTitle: document.getElementById('playlist-details-title'),
                 playlistSongList: document.getElementById('playlist-song-list'),
-                addSongsToPlaylistBtn: document.getElementById('add-songs-to-playlist-btn'),
             },
 
             state: {
@@ -343,10 +337,6 @@
                 currentPlaylistId: null,
                 playQueue: [], 
                 currentQueueIndex: -1,
-                restoredState: null,
-                touchStartX: 0,
-                touchEndX: 0,
-                viewOrder: ['search-view', 'player-view', 'playlists-view'],
             },
 
             audio: new Audio(),
@@ -358,18 +348,14 @@
 
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
-                
-                await this.loadPlaybackState();
 
                 console.log("🔄 Sincronizando com a pasta /Musics...");
                 await this.syncWithServerFolder();
 
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
-
-                if (this.state.currentSongIndex === -1) {
-                    this.switchView('player-view');
-                }
+                this.audio.volume = 1; 
+                this.switchView('player-view');
             },
 
             registerServiceWorker() {
@@ -397,13 +383,9 @@
                 this.dom.repeatBtn.addEventListener('click', (e) => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); });
                 this.dom.shuffleBtn.addEventListener('click', (e) => { this.toggleShuffle(); this.animateIcon(e.currentTarget); });
                 this.dom.progressBar.addEventListener('input', (e) => this.seek(e.target.value));
-                
                 this.audio.addEventListener('timeupdate', () => this.updateProgress());
                 this.audio.addEventListener('ended', () => this.handleSongEnd());
-                this.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
-                this.audio.addEventListener('pause', () => this.savePlaybackState());
-                this.audio.addEventListener('volumechange', () => this.savePlaybackState());
-                window.addEventListener('beforeunload', () => this.savePlaybackState());
+                this.audio.addEventListener('loadedmetadata', () => this.updateProgress());
 
                 this.dom.navButtons.forEach(btn => {
                     if(btn.dataset.view) {
@@ -445,8 +427,6 @@
                 });
 
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
-                this.dom.addSongsToPlaylistBtn.addEventListener('click', () => this.switchView('search-view'));
-                
                 this.dom.songList.addEventListener('click', (e) => this.handleSongListClick(e, this.state.songs));
                 this.dom.playlistSongList.addEventListener('click', (e) => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -455,53 +435,6 @@
                         this.handleSongListClick(e, songsInPlaylist, true);
                     }
                 });
-                
-                this.dom.appContent.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
-                this.dom.appContent.addEventListener('touchmove', (e) => this.handleTouchMove(e), false);
-                this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
-            },
-
-            handleTouchStart(event) {
-                const target = event.target.closest('button, input[type="range"], .progress-container');
-                if (target) {
-                    this.state.touchStartX = 0;
-                    return;
-                }
-                this.state.touchStartX = event.changedTouches[0].screenX;
-            },
-
-            handleTouchMove(event) {
-                this.state.touchEndX = event.changedTouches[0].screenX;
-            },
-
-            handleTouchEnd() {
-                if (this.state.touchStartX === 0 || this.state.touchEndX === 0) return;
-
-                const threshold = 60; 
-                const swipeDistance = this.state.touchEndX - this.state.touchStartX;
-                const isSwipe = Math.abs(swipeDistance) > threshold;
-
-                if (isSwipe) {
-                    const activeView = document.querySelector('.view.active');
-                    if (!activeView) return;
-
-                    const currentIndex = this.state.viewOrder.indexOf(activeView.id);
-                    if (currentIndex === -1) return;
-
-                    let nextIndex;
-                    if (swipeDistance < 0) {
-                        nextIndex = Math.min(currentIndex + 1, this.state.viewOrder.length - 1);
-                    } else {
-                        nextIndex = Math.max(currentIndex - 1, 0);
-                    }
-
-                    if (nextIndex !== currentIndex) {
-                        const nextViewId = this.state.viewOrder[nextIndex];
-                        this.switchView(nextViewId);
-                    }
-                }
-                this.state.touchStartX = 0;
-                this.state.touchEndX = 0;
             },
 
             handleSongListClick(event, songSourceList, isPlaylistContext = false) {
@@ -566,6 +499,7 @@
                     const serverFileNames = musicFiles.map(path => path.split('/').pop());
                     const localSongs = this.state.songs;
 
+                    // --- 1. ADICIONAR NOVAS MÚSICAS ---
                     const localFileNames = localSongs.map(song => song.file.name);
                     for (const path of musicFiles) {
                         const fileName = path.split('/').pop();
@@ -585,6 +519,7 @@
                         }
                     }
 
+                    // --- 2. REMOVER MÚSICAS ANTIGAS ---
                     const songsToDelete = localSongs.filter(song => !serverFileNames.includes(song.file.name));
 
                     if (songsToDelete.length > 0) {
@@ -597,6 +532,7 @@
                             await this.deleteSongFromDB(song.id);
                         }
 
+                        // --- 3. LIMPAR PLAYLISTS ---
                         console.log('🧹 Limpando IDs de músicas removidas das playlists...');
                         const playlistsToUpdate = this.state.playlists.filter(p => 
                             p.songIds.some(id => deletedSongIds.includes(id))
@@ -612,10 +548,11 @@
                         }
                     }
 
+                    // --- 4. ATUALIZAR ESTADO E UI ---
                     if (changesMade) {
                         console.log("🎶 Biblioteca sincronizada. Recarregando dados...");
                         await this.loadSongsFromDB();
-                        await this.loadPlaylistsFromDB();
+                        await this.loadPlaylistsFromDB(); // Recarrega para garantir a contagem correta
                     } else {
                         console.log("✅ Biblioteca já está atualizada.");
                     }
@@ -652,9 +589,7 @@
             play() {
                 if (this.state.songs.length === 0) return;
                 this.state.isPlaying = true;
-                this.audio.play()
-                    .then(() => this.savePlaybackState())
-                    .catch(e => console.error("Erro ao tocar:", e));
+                this.audio.play().catch(e => console.error("Erro ao tocar:", e));
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
             },
 
@@ -700,50 +635,6 @@
                     this.play();
                 } else {
                     this.changeTrack('next');
-                }
-            },
-            
-            handleMetadataLoaded() {
-                this.updateProgress();
-                if (this.state.restoredState && this.state.songs[this.state.currentSongIndex]?.id === this.state.restoredState.songId) {
-                    this.audio.currentTime = this.state.restoredState.currentTime;
-                    this.updateProgress(); 
-                    this.state.restoredState = null;
-                }
-            },
-
-            savePlaybackState() {
-                if (this.state.currentSongIndex === -1) return;
-                const song = this.state.songs[this.state.currentSongIndex];
-                if (!song) return;
-
-                const state = {
-                    songId: song.id,
-                    currentTime: this.audio.currentTime,
-                    volume: this.audio.volume,
-                };
-                localStorage.setItem('spobrefyPlaybackState', JSON.stringify(state));
-            },
-
-            async loadPlaybackState() {
-                const savedStateJSON = localStorage.getItem('spobrefyPlaybackState');
-                if (savedStateJSON) {
-                    try {
-                        const savedState = JSON.parse(savedStateJSON);
-                        
-                        this.audio.volume = savedState.volume || 1;
-                        const songIndex = this.state.songs.findIndex(s => s.id === savedState.songId);
-
-                        if (songIndex > -1) {
-                            console.log(`Restaurando estado: Música ID ${savedState.songId} no tempo ${this.formatTime(savedState.currentTime)}`);
-                            this.state.restoredState = savedState;
-                            this.loadSong(songIndex, false);
-                            this.switchView('player-view');
-                        }
-                    } catch (error) {
-                        console.error("Erro ao carregar o estado salvo:", error);
-                        localStorage.removeItem('spobrefyPlaybackState');
-                    }
                 }
             },
 
