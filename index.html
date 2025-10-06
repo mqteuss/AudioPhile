@@ -173,19 +173,19 @@
                 </div>
                 <div>
                      <div class="progress-container mb-2">
-                        <input type="range" id="progress-bar" class="w-full appearance-none cursor-pointer" value="0" step="1">
-                        <div class="flex justify-between text-xs text-zinc-400 mt-1.5">
-                            <span id="current-time">0:00</span>
-                            <span id="duration">0:00</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center text-zinc-200 px-2 my-6">
-                        <button id="shuffle-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Aleatório"><i class="fas fa-shuffle text-xl"></i></button>
-                        <button id="prev-btn" class="control-btn p-2 transition-colors" title="Anterior"><i class="fas fa-backward-step text-4xl"></i></button>
-                        <button id="play-pause-btn" class="control-btn bg-white text-black rounded-full w-20 h-20 flex items-center justify-center hover:scale-105 transition-transform shadow-lg" title="Play/Pause"><i class="fas fa-play text-3xl ml-1"></i></button>
-                        <button id="next-btn" class="control-btn p-2 transition-colors" title="Próxima"><i class="fas fa-forward-step text-4xl"></i></button>
-                        <button id="repeat-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Repetir"><i class="fas fa-repeat text-xl"></i></button>
-                    </div>
+                         <input type="range" id="progress-bar" class="w-full appearance-none cursor-pointer" value="0" step="1">
+                         <div class="flex justify-between text-xs text-zinc-400 mt-1.5">
+                             <span id="current-time">0:00</span>
+                             <span id="duration">0:00</span>
+                         </div>
+                     </div>
+                     <div class="flex justify-between items-center text-zinc-200 px-2 my-6">
+                         <button id="shuffle-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Aleatório"><i class="fas fa-shuffle text-xl"></i></button>
+                         <button id="prev-btn" class="control-btn p-2 transition-colors" title="Anterior"><i class="fas fa-backward-step text-4xl"></i></button>
+                         <button id="play-pause-btn" class="control-btn bg-white text-black rounded-full w-20 h-20 flex items-center justify-center hover:scale-105 transition-transform shadow-lg" title="Play/Pause"><i class="fas fa-play text-3xl ml-1"></i></button>
+                         <button id="next-btn" class="control-btn p-2 transition-colors" title="Próxima"><i class="fas fa-forward-step text-4xl"></i></button>
+                         <button id="repeat-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Repetir"><i class="fas fa-repeat text-xl"></i></button>
+                     </div>
                 </div>
             </div>
         </div>
@@ -211,7 +211,7 @@
 
         <div id="playlists-view" class="view p-6 md:p-8">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
-              <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
+               <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
         </div>
 
         <div id="playlist-details-view" class="view p-6 md:p-8">
@@ -247,8 +247,8 @@
              <h2 class="text-xl font-bold text-center mb-4">Criar nova playlist</h2>
              <input id="playlist-name-input" type="text" placeholder="Dê um nome à sua playlist" class="w-full bg-zinc-700 border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-500 mb-6">
              <div class="flex justify-end gap-3">
-                <button id="cancel-playlist-btn" class="px-5 py-2 rounded-full font-semibold transition-colors hover:bg-zinc-700">Cancelar</button>
-                <button id="confirm-playlist-btn" class="bg-green-500 text-black px-5 py-2 rounded-full font-semibold transition-colors hover:bg-green-400">Criar</button>
+                 <button id="cancel-playlist-btn" class="px-5 py-2 rounded-full font-semibold transition-colors hover:bg-zinc-700">Cancelar</button>
+                 <button id="confirm-playlist-btn" class="bg-green-500 text-black px-5 py-2 rounded-full font-semibold transition-colors hover:bg-green-400">Criar</button>
              </div>
         </div>
     </div>
@@ -261,7 +261,7 @@
     </div>
 
     <template id="song-item-template">
-         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
+        <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
             <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
                 <img class="song-cover w-12 h-12 rounded-md object-cover" src="" alt="Capa">
                 <div class="flex-grow min-w-0">
@@ -336,10 +336,11 @@
                 songIdToAddToPlaylist: null,
                 currentPlaylistId: null,
                 playQueue: [], 
+                currentQueueIndex: -1,
             },
 
             audio: new Audio(),
-            
+           
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
@@ -459,46 +460,42 @@
                      this.switchView('player-view');
                 }
             },
-            
+           
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
-    "Musics/505-ArcticMonkeys.mp3",
-    "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_128K).mp3",
-    "Musics/Arctic Monkeys - Do I Wanna Know_(Official Video)(720P_HD).mp3",
-    "Musics/Arctic Monkeys - Do I Wanna Know_(Official Video)(MP3_128K).mp3",
-    "Musics/Art Deco(MP3_128K).mp3",
-    "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_128K).mp3",
-    "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_128K).mp3",
-    "Musics/I Wanna Be Yours(MP3_128K).mp3",
-    "Musics/Imogen Heap - Headlock (Official Video)(MP3_128K).mp3",
-    "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_128K).mp3",
-    "Musics/LEOWOLF - Romantic Gangster(MP3_128K).mp3",
-    "Musics/Lied To(MP3_128K).mp3",
-    "Musics/Matt Maeson - Put It on Me(MP3_128K).mp3",
-    "Musics/No. 1 Party Anthem(MP3_128K).mp3",
-    "Musics/RealestK - Selfie (Official Audio)(720P_HD).mp3",
-    "Musics/Sweater Weather(MP3_128K).mp3",
-    "Musics/Your Rarest of Flowers(MP3_128K).mp3"
-];
+                        "Musics/505-ArcticMonkeys.mp3",
+                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_128K).mp3",
+                        "Musics/Art Deco(MP3_128K).mp3",
+                        "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_128K).mp3",
+                        "Musics/I Wanna Be Yours(MP3_128K).mp3",
+                        "Musics/Imogen Heap - Headlock (Official Video)(MP3_128K).mp3",
+                        "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_128K).mp3",
+                        "Musics/LEOWOLF - Romantic Gangster(MP3_128K).mp3",
+                        "Musics/Lied To(MP3_128K).mp3",
+                        "Musics/Matt Maeson - Put It on Me(MP3_128K).mp3",
+                        "Musics/No. 1 Party Anthem(MP3_128K).mp3",
+                        "Musics/RealestK - Senfie (Official Audio)(720P_HD).mp3",
+                        "Musics/Sweater Weather(MP3_128K).mp3",
+                        "Musics/Your Rarest of Flowers(MP3_128K).mp3"
+                    ];
 
-                    
-                    const existingFileNames = this.state.songs.map(song => song.file.name);
-                    let newSongsAdded = false;
+                    let changesMade = false;
+                    const serverFileNames = musicFiles.map(path => path.split('/').pop());
+                    const localSongs = this.state.songs;
 
+                    // --- 1. ADICIONAR NOVAS MÚSICAS ---
+                    const localFileNames = localSongs.map(song => song.file.name);
                     for (const path of musicFiles) {
                         const fileName = path.split('/').pop();
-                        
-                        if (!existingFileNames.includes(fileName)) {
-                            newSongsAdded = true;
+                        if (!localFileNames.includes(fileName)) {
                             console.log(`➕ Adicionando nova música: ${fileName}`);
-                            
+                            changesMade = true;
                             const response = await fetch(path);
                             if (!response.ok) {
                                 console.warn(`Arquivo não encontrado no servidor: ${path}`);
                                 continue;
                             }
-
                             const blob = await response.blob();
                             const file = new File([blob], fileName, { type: blob.type });
                             const metadata = await this.readAudioMetadata(file);
@@ -507,9 +504,40 @@
                         }
                     }
 
-                    if (newSongsAdded) {
-                        console.log("🎶 Biblioteca atualizada. Recarregando lista de músicas...");
+                    // --- 2. REMOVER MÚSICAS ANTIGAS ---
+                    const songsToDelete = localSongs.filter(song => !serverFileNames.includes(song.file.name));
+
+                    if (songsToDelete.length > 0) {
+                        console.log(`🗑️ Removendo ${songsToDelete.length} músicas obsoletas...`);
+                        changesMade = true;
+                        const deletedSongIds = songsToDelete.map(s => s.id);
+
+                        for (const song of songsToDelete) {
+                            console.log(`   - Deletando: ${song.file.name}`);
+                            await this.deleteSongFromDB(song.id);
+                        }
+                        
+                        // --- 3. LIMPAR PLAYLISTS ---
+                        console.log('🧹 Limpando IDs de músicas removidas das playlists...');
+                        const playlistsToUpdate = this.state.playlists.filter(p => 
+                            p.songIds.some(id => deletedSongIds.includes(id))
+                        );
+
+                        for (const playlist of playlistsToUpdate) {
+                            const originalCount = playlist.songIds.length;
+                            playlist.songIds = playlist.songIds.filter(id => !deletedSongIds.includes(id));
+                            if (playlist.songIds.length < originalCount) {
+                                console.log(`   - Atualizando playlist "${playlist.name}"`);
+                                await this.savePlaylistToDB(playlist);
+                            }
+                        }
+                    }
+
+                    // --- 4. ATUALIZAR ESTADO E UI ---
+                    if (changesMade) {
+                        console.log("🎶 Biblioteca sincronizada. Recarregando dados...");
                         await this.loadSongsFromDB();
+                        await this.loadPlaylistsFromDB(); // Recarrega para garantir a contagem correta
                     } else {
                         console.log("✅ Biblioteca já está atualizada.");
                     }
@@ -535,7 +563,7 @@
                 this.state.currentSongIndex = globalIndex;
                 const song = this.state.songs[globalIndex];
 
-                this.state.currentQueueIndex = queueIndex !== -1 ? queueIndex : -1;
+                this.state.currentQueueIndex = queueIndex;
 
                 this.audio.src = URL.createObjectURL(song.file);
                 this.updatePlayerUI(song);
@@ -570,12 +598,12 @@
                 if (source.length === 0) return;
 
                 let newQueueIndex;
+                const currentIndex = this.state.currentQueueIndex;
 
                 if (this.state.isShuffle) {
                     do { newQueueIndex = Math.floor(Math.random() * source.length); } 
-                    while (source.length > 1 && newQueueIndex === this.state.currentQueueIndex);
+                    while (source.length > 1 && newQueueIndex === currentIndex);
                 } else {
-                    const currentIndex = this.state.currentQueueIndex;
                     newQueueIndex = (direction === 'next') 
                         ? (currentIndex + 1) % source.length
                         : (currentIndex - 1 + source.length) % source.length;
@@ -798,6 +826,16 @@
                 });
             },
 
+            async deleteSongFromDB(songId) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songs'], 'readwrite');
+                    const store = transaction.objectStore('songs');
+                    const request = store.delete(songId);
+                    request.onsuccess = resolve;
+                    request.onerror = reject;
+                });
+            },
+
             async loadSongsFromDB() {
                 if (!this.db) await this.initDB();
                  return new Promise((resolve, reject) => {
@@ -889,6 +927,8 @@
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
                         if (firstSong && firstSong.coverUrl) {
                             item.querySelector('.playlist-cover').src = firstSong.coverUrl;
+                        } else {
+                            item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
                         }
                     } else {
                          item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
