@@ -168,7 +168,7 @@
                 <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=Spobrefy" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
                 <div class="text-center my-8">
                     <h2 id="track-title" class="text-2xl font-bold truncate">Bem-vindo!</h2>
-                    <h3 id="track-artist" class="text-md text-zinc-400 truncate">Adicione suas músicas</h3>
+                    <h3 id="track-artist" class="text-md text-zinc-400 truncate">Sincronize ou adicione suas músicas</h3>
                 </div>
                 <div>
                      <div class="progress-container mb-2">
@@ -189,7 +189,7 @@
             </div>
         </div>
 
-        <div id="search-view" class="view p-6 md:p-8 pb-20">
+        <div id="search-view" class="view p-6 md:p-8 pb-32">
             <h1 class="text-3xl font-bold mb-6">Buscar</h1>
             <div class="flex items-center gap-3 mb-6">
                 <div class="relative flex-grow">
@@ -208,12 +208,12 @@
             <ul id="song-list" class="space-y-1 mt-4"></ul>
         </div>
 
-        <div id="playlists-view" class="view p-6 md:p-8 pb-20">
+        <div id="playlists-view" class="view p-6 md:p-8 pb-32">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
                <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
         </div>
 
-        <div id="playlist-details-view" class="view p-6 md:p-8 pb-20">
+        <div id="playlist-details-view" class="view p-6 md:p-8 pb-32">
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center min-w-0">
                     <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
@@ -273,8 +273,10 @@
                     <p class="song-artist text-sm text-zinc-400 truncate"></p>
                 </div>
             </div>
+            <i class="offline-indicator fas fa-check-circle text-green-500 hidden" title="Disponível offline"></i>
             <p class="song-duration text-sm text-zinc-400 ml-auto pr-2"></p>
-            <button class="playlist-action-btn text-zinc-400 hover:text-white p-2"><i class="fas fa-plus"></i></button>
+            <button class="download-btn text-zinc-400 hover:text-white p-2" title="Baixar música"><i class="fas fa-download"></i></button>
+            <button class="playlist-action-btn text-zinc-400 hover:text-white p-2" title="Adicionar à playlist"><i class="fas fa-plus"></i></button>
         </li>
     </template>
 
@@ -359,10 +361,10 @@
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
                 
-                await this.loadPlaybackState();
-
-                console.log("🔄 Sincronizando com a pasta /Musics...");
+                console.log("🔄 Sincronizando catálogo com a pasta /Musics...");
                 await this.syncWithServerFolder();
+
+                await this.loadPlaybackState();
 
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
@@ -379,7 +381,7 @@
                         .catch(error => console.log('Falha ao registrar Service Worker:', error));
                 }
             },
-
+            
             animateIcon(element) {
                 const icon = element.querySelector('i');
                 if (icon) {
@@ -459,16 +461,8 @@
                 this.dom.appContent.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', (e) => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
-
-                // --- IMPLEMENTAÇÃO DA MEDIA SESSION API ---
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.setActionHandler('play', () => { this.togglePlayPause(); });
-                    navigator.mediaSession.setActionHandler('pause', () => { this.togglePlayPause(); });
-                    navigator.mediaSession.setActionHandler('previoustrack', () => { this.changeTrack('prev'); });
-                    navigator.mediaSession.setActionHandler('nexttrack', () => { this.changeTrack('next'); });
-                }
             },
-
+            
             handleTouchStart(event) {
                 const target = event.target.closest('button, input[type="range"], .progress-container');
                 if (target) {
@@ -511,42 +505,26 @@
                 this.state.touchStartX = 0;
                 this.state.touchEndX = 0;
             },
-            
-            // --- NOVO MÉTODO PARA MEDIA SESSION API ---
-            updateMediaSession() {
-                if (!('mediaSession' in navigator)) {
-                    console.log("Media Session API não suportada.");
-                    return;
-                }
 
-                if (this.state.currentSongIndex === -1) {
-                    navigator.mediaSession.metadata = null;
-                    return;
-                }
-
-                const song = this.state.songs[this.state.currentSongIndex];
-
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: song.title || 'Título Desconhecido',
-                    artist: song.artist || 'Artista Desconhecido',
-                    album: 'Spobrefy',
-                    artwork: [
-                        { src: song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy', sizes: '512x512', type: 'image/png' },
-                    ]
-                });
-                
-                navigator.mediaSession.playbackState = this.state.isPlaying ? "playing" : "paused";
-            },
-
-            handleSongListClick(event, songSourceList, isPlaylistContext = false) {
+            async handleSongListClick(event, songSourceList, isPlaylistContext = false) {
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
 
                 const songId = parseInt(songItem.dataset.songId);
-                const actionBtn = event.target.closest('.playlist-action-btn');
-
-                if (actionBtn) {
-                    if(isPlaylistContext) {
+                const playlistActionBtn = event.target.closest('.playlist-action-btn');
+                const downloadBtn = event.target.closest('.download-btn');
+                
+                if (downloadBtn) {
+                    const song = this.state.songs.find(s => s.id === songId);
+                    if (song) {
+                        if (song.isOffline) {
+                            await this.deleteOfflineSong(songId);
+                        } else {
+                            await this.downloadSong(songId);
+                        }
+                    }
+                } else if (playlistActionBtn) {
+                    if (isPlaylistContext) {
                         this.removeSongFromPlaylist(songId, this.state.currentPlaylistId);
                     } else {
                         this.state.songIdToAddToPlaylist = songId;
@@ -555,11 +533,76 @@
                 } else if (event.target.closest('.clickable-area')) {
                      this.state.playQueue = [...songSourceList]; 
                      const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
-
                      const globalIndex = this.state.songs.findIndex(s => s.id === songId);
+                     
                      this.loadSong(globalIndex, true, queueIndex);
                      this.switchView('player-view');
                 }
+            },
+
+            async downloadSong(songId) {
+                const song = this.state.songs.find(s => s.id === songId);
+                if (!song || song.isOffline) return;
+
+                console.log(`📥 Baixando "${song.title}"...`);
+                this.updateSongItemUI(songId, { isDownloading: true });
+
+                try {
+                    const response = await fetch(song.path);
+                    if (!response.ok) throw new Error(`Falha ao baixar: ${response.statusText}`);
+                    const blob = await response.blob();
+                    
+                    await this.saveSongDataToDB(song.id, blob);
+
+                    song.isOffline = true;
+                    await this.saveSongMetadataToDB(song);
+                    
+                    console.log(`✅ "${song.title}" baixada com sucesso!`);
+                } catch (error) {
+                    console.error("Erro no download:", error);
+                } finally {
+                    this.updateSongItemUI(songId, { isDownloading: false });
+                }
+            },
+            
+            async deleteOfflineSong(songId) {
+                const song = this.state.songs.find(s => s.id === songId);
+                if (!song || !song.isOffline) return;
+
+                if (confirm(`Deseja remover a versão offline de "${song.title}"?`)) {
+                    console.log(`🗑️ Removendo offline: "${song.title}"`);
+                    await this.deleteSongDataFromDB(songId);
+                    song.isOffline = false;
+                    await this.saveSongMetadataToDB(song);
+                    this.updateSongItemUI(songId);
+                }
+            },
+            
+            updateSongItemUI(songId, { isDownloading = false } = {}) {
+                document.querySelectorAll(`.song-item[data-song-id="${songId}"]`).forEach(item => {
+                    const song = this.state.songs.find(s => s.id === songId);
+                    if (!song) return;
+
+                    const downloadBtnIcon = item.querySelector('.download-btn i');
+                    const offlineIndicator = item.querySelector('.offline-indicator');
+
+                    downloadBtnIcon.className = 'fas';
+                    if (isDownloading) {
+                        downloadBtnIcon.classList.add('fa-spinner', 'fa-spin');
+                        item.querySelector('.download-btn').disabled = true;
+                    } else {
+                        item.querySelector('.download-btn').disabled = false;
+                        if (song.isOffline) {
+                            downloadBtnIcon.classList.add('fa-trash-can');
+                            item.querySelector('.download-btn').title = "Remover do offline";
+                        } else {
+                            downloadBtnIcon.classList.add('fa-download');
+                            item.querySelector('.download-btn').title = "Baixar música";
+                        }
+                    }
+
+                    offlineIndicator.classList.toggle('hidden', !song.isOffline);
+                });
             },
 
             async syncWithServerFolder() {
@@ -597,68 +640,51 @@
                     ];
 
                     let changesMade = false;
-                    const serverFileNames = musicFiles.map(path => path.split('/').pop());
+                    const serverFilePaths = musicFiles;
                     const localSongs = this.state.songs;
 
-                    const localFileNames = localSongs.map(song => song.file.name);
-                    for (const path of musicFiles) {
-                        const fileName = path.split('/').pop();
-                        if (!localFileNames.includes(fileName)) {
-                            console.log(`➕ Adicionando nova música: ${fileName}`);
+                    const localPaths = localSongs.map(song => song.path);
+                    for (const path of serverFilePaths) {
+                        if (!localPaths.includes(path)) {
                             changesMade = true;
-                            const response = await fetch(path);
-                            if (!response.ok) {
-                                console.warn(`Arquivo não encontrado no servidor: ${path}`);
-                                continue;
-                            }
-                            const blob = await response.blob();
-                            const file = new File([blob], fileName, { type: blob.type });
-                            const metadata = await this.readAudioMetadata(file);
-                            const song = { file, ...metadata };
-                            await this.saveSongToDB(song);
+                            const fileName = path.split('/').pop();
+                            console.log(`Catalogando nova música: ${fileName}`);
+                            
+                            const title = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, ' ').replace(/\(.*\)/, '').trim();
+
+                            const song = {
+                                title: title,
+                                artist: "Artista Desconhecido",
+                                path: path,
+                                isOffline: false,
+                                coverUrl: null
+                            };
+                            await this.saveSongMetadataToDB(song);
                         }
                     }
 
-                    const songsToDelete = localSongs.filter(song => !serverFileNames.includes(song.file.name));
-
+                    const songsToDelete = localSongs.filter(song => song.path && !serverFilePaths.includes(song.path));
                     if (songsToDelete.length > 0) {
-                        console.log(`🗑️ Removendo ${songsToDelete.length} músicas obsoletas...`);
+                        console.log(`🗑️ Removendo ${songsToDelete.length} músicas obsoletas do catálogo...`);
                         changesMade = true;
-                        const deletedSongIds = songsToDelete.map(s => s.id);
-
                         for (const song of songsToDelete) {
-                            console.log(`   - Deletando: ${song.file.name}`);
+                            console.log(`   - Deletando: ${song.title}`);
                             await this.deleteSongFromDB(song.id);
-                        }
-
-                        console.log('🧹 Limpando IDs de músicas removidas das playlists...');
-                        const playlistsToUpdate = this.state.playlists.filter(p => 
-                            p.songIds.some(id => deletedSongIds.includes(id))
-                        );
-
-                        for (const playlist of playlistsToUpdate) {
-                            const originalCount = playlist.songIds.length;
-                            playlist.songIds = playlist.songIds.filter(id => !deletedSongIds.includes(id));
-                            if (playlist.songIds.length < originalCount) {
-                                console.log(`   - Atualizando playlist "${playlist.name}"`);
-                                await this.savePlaylistToDB(playlist);
-                            }
                         }
                     }
 
                     if (changesMade) {
-                        console.log("🎶 Biblioteca sincronizada. Recarregando dados...");
+                        console.log("🎶 Catálogo sincronizado. Recarregando dados...");
                         await this.loadSongsFromDB();
                         await this.loadPlaylistsFromDB();
                     } else {
-                        console.log("✅ Biblioteca já está atualizada.");
+                        console.log("✅ Catálogo já está atualizado.");
                     }
-
                 } catch (error) {
                     console.error("Erro ao sincronizar músicas do servidor:", error);
                 }
             },
-
+            
             switchView(viewId) {
                 this.dom.views.forEach(v => v.classList.toggle('active', v.id === viewId));
                 this.dom.navButtons.forEach(b => {
@@ -669,29 +695,41 @@
                 });
             },
 
-            loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
+            async loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
                 if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
 
                 this.state.currentSongIndex = globalIndex;
                 const song = this.state.songs[globalIndex];
-
                 this.state.currentQueueIndex = queueIndex;
+                
+                try {
+                    if (song.isOffline) {
+                        console.log(`▶️ Tocando offline: ${song.title}`);
+                        const songData = await this.getSongDataFromDB(song.id);
+                        if (songData) {
+                            this.audio.src = URL.createObjectURL(songData);
+                        } else {
+                            console.warn("Dado offline não encontrado, fazendo streaming.");
+                            this.audio.src = song.path;
+                        }
+                    } else {
+                        console.log(`▶️ Tocando online (streaming): ${song.title}`);
+                        this.audio.src = song.path;
+                    }
+                } catch(e) {
+                    console.error("Erro ao carregar áudio: ", e);
+                    return;
+                }
 
-                this.audio.src = URL.createObjectURL(song.file);
                 this.updatePlayerUI(song);
-                this.updateMediaSession(); // <-- ATUALIZAÇÃO
-
                 if (shouldPlay) this.play();
             },
-
+            
             play() {
                 if (this.state.songs.length === 0) return;
                 this.state.isPlaying = true;
                 this.audio.play()
-                    .then(() => {
-                        this.savePlaybackState();
-                        this.updateMediaSession(); // <-- ATUALIZAÇÃO
-                    })
+                    .then(() => this.savePlaybackState())
                     .catch(e => console.error("Erro ao tocar:", e));
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
             },
@@ -699,7 +737,6 @@
             pause() {
                 this.state.isPlaying = false;
                 this.audio.pause();
-                this.updateMediaSession(); // <-- ATUALIZAÇÃO
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>';
             },
 
@@ -922,7 +959,7 @@
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open('SpobrefyDB', 2);
+                    const request = indexedDB.open('SpobrefyDB', 3);
                     request.onerror = (event) => reject("Erro ao abrir o DB");
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
@@ -933,6 +970,9 @@
                         if (!db.objectStoreNames.contains('songs')) {
                             db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
                         }
+                         if (!db.objectStoreNames.contains('songData')) {
+                            db.createObjectStore('songData', { keyPath: 'id' });
+                        }
                         if (!db.objectStoreNames.contains('playlists')) {
                             db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
                         }
@@ -942,22 +982,25 @@
 
             async addMusicFiles(files) {
                 try {
-                    const supportedExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a'];
-
                     for (const file of files) {
-                        const isSupported = supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                        if (isSupported) {
-                            const metadata = await this.readAudioMetadata(file);
-                            const song = { file, ...metadata };
-                            await this.saveSongToDB(song);
-                        }
+                        const metadata = await this.readAudioMetadata(file);
+                        const songMetadata = { 
+                            title: metadata.title,
+                            artist: metadata.artist,
+                            coverUrl: metadata.coverUrl,
+                            path: null,
+                            isOffline: true,
+                        };
+                        
+                        const id = await this.saveSongMetadataToDB(songMetadata, true);
+                        await this.saveSongDataToDB(id, file); 
                     }
                     await this.loadSongsFromDB();
                 } catch (error) {
                     console.error("Erro ao processar os arquivos:", error);
                 }
             },
-
+            
             readAudioMetadata(file) {
                 return new Promise((resolve) => {
                     jsmediatags.read(file, {
@@ -977,25 +1020,56 @@
                     });
                 });
             },
-
-            async saveSongToDB(song) {
+            
+            async saveSongMetadataToDB(song, returnId = false) {
                 if (!this.db) await this.initDB();
                 return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(['songs'], 'readwrite');
                     const store = transaction.objectStore('songs');
-                    const request = store.add(song);
-                    request.onsuccess = resolve;
+                    const request = store.put(song);
+                    request.onsuccess = (event) => resolve(returnId ? event.target.result : undefined);
                     request.onerror = reject;
                 });
             },
 
+            async saveSongDataToDB(songId, blob) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songData'], 'readwrite');
+                    const store = transaction.objectStore('songData');
+                    store.put({ id: songId, data: blob });
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+                });
+            },
+
+            async getSongDataFromDB(songId) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songData'], 'readonly');
+                    const store = transaction.objectStore('songData');
+                    const request = store.get(songId);
+                    request.onsuccess = (event) => resolve(event.target.result?.data);
+                    request.onerror = reject;
+                });
+            },
+
+            async deleteSongDataFromDB(songId) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['songData'], 'readwrite');
+                    const store = transaction.objectStore('songData');
+                    store.delete(songId);
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+                });
+            },
+            
             async deleteSongFromDB(songId) {
+                await this.deleteSongDataFromDB(songId);
                 return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(['songs'], 'readwrite');
                     const store = transaction.objectStore('songs');
-                    const request = store.delete(songId);
-                    request.onsuccess = resolve;
-                    request.onerror = reject;
+                    store.delete(songId);
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
                 });
             },
 
@@ -1059,7 +1133,10 @@
                     songsToRender.forEach((song) => {
                         const item = this.dom.songItemTemplate.content.cloneNode(true);
                         const li = item.querySelector('.song-item');
-                        const actionBtn = item.querySelector('.playlist-action-btn i');
+                        const playlistActionBtnIcon = item.querySelector('.playlist-action-btn i');
+                        const downloadBtn = item.querySelector('.download-btn');
+                        const downloadBtnIcon = downloadBtn.querySelector('i');
+                        const offlineIndicator = item.querySelector('.offline-indicator');
 
                         li.dataset.songId = song.id;
                         item.querySelector('.song-cover').src = song.coverUrl || 'https://placehold.co/100x100/27272a/3f3f46?text=?';
@@ -1067,8 +1144,18 @@
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
 
                         if (isPlaylistContext) {
-                            actionBtn.classList.remove('fa-plus');
-                            actionBtn.classList.add('fa-trash-can');
+                            playlistActionBtnIcon.classList.remove('fa-plus');
+                            playlistActionBtnIcon.classList.add('fa-trash-can');
+                            playlistActionBtnIcon.parentElement.title = "Remover da playlist";
+                        }
+                        
+                        if (song.isOffline) {
+                            downloadBtnIcon.classList.remove('fa-download');
+                            downloadBtnIcon.classList.add('fa-trash-can');
+                            downloadBtn.title = "Remover do offline";
+                            offlineIndicator.classList.remove('hidden');
+                        } else {
+                            downloadBtn.classList.toggle('hidden', !song.path);
                         }
 
                         fragment.appendChild(item);
@@ -1076,6 +1163,7 @@
                     container.appendChild(fragment);
                 }
             },
+            
             renderPlaylistGrid() {
                 this.dom.playlistGrid.innerHTML = '';
                 const fragment = document.createDocumentFragment();
