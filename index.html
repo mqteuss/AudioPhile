@@ -605,6 +605,7 @@
                 });
             },
 
+            // NOVO: syncWithServerFolder agora lê metadados remotos
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
@@ -647,17 +648,15 @@
                     for (const path of serverFilePaths) {
                         if (!localPaths.includes(path)) {
                             changesMade = true;
-                            const fileName = path.split('/').pop();
-                            console.log(`Catalogando nova música: ${fileName}`);
+                            console.log(`Lendo metadados de: ${path.split('/').pop()}`);
                             
-                            const title = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, ' ').replace(/\(.*\)/, '').trim();
+                            // Em vez de analisar o nome do arquivo, lemos os metadados da URL
+                            const metadata = await this.readRemoteAudioMetadata(path);
 
                             const song = {
-                                title: title,
-                                artist: "Artista Desconhecido",
+                                ...metadata, // Inclui title, artist, coverUrl
                                 path: path,
                                 isOffline: false,
-                                coverUrl: null
                             };
                             await this.saveSongMetadataToDB(song);
                         }
@@ -1001,6 +1000,7 @@
                 }
             },
             
+            // Esta função continua a mesma, para ler arquivos LOCAIS
             readAudioMetadata(file) {
                 return new Promise((resolve) => {
                     jsmediatags.read(file, {
@@ -1016,6 +1016,30 @@
                         onError: (error) => {
                             console.warn('Erro ao ler metadados:', error);
                             resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
+                        }
+                    });
+                });
+            },
+
+            // NOVA FUNÇÃO: Para ler metadados de uma URL remota eficientemente
+            readRemoteAudioMetadata(url) {
+                return new Promise((resolve) => {
+                    jsmediatags.read(url, {
+                        onSuccess: (tag) => {
+                            const { title, artist, picture } = tag.tags;
+                            let coverUrl = null;
+                            if (picture) {
+                                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
+                                coverUrl = `data:${picture.format};base64,${base64String}`;
+                            }
+                            const fileName = url.split('/').pop();
+                            resolve({ title: title || fileName.replace(/\.[^/.]+$/, ""), artist: artist || "Artista Desconhecido", coverUrl });
+                        },
+                        onError: (error) => {
+                            console.warn(`Erro ao ler metadados de ${url}:`, error);
+                            const fileName = url.split('/').pop();
+                            // Retorna um fallback para não quebrar a aplicação
+                            resolve({ title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
                         }
                     });
                 });
