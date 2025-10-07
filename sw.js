@@ -1,9 +1,9 @@
 // sw.js
 
-// Define um nome e versão para o nosso cache. Mudar a versão força a atualização do cache.
-const CACHE_NAME = 'spobrefy-cache-v33';
+const APP_CACHE_NAME = 'spobrefy-app-shell-cache-v34'; // Mude a versão para forçar a atualização
+const MUSIC_CACHE_NAME = 'spobrefy-music-cache-v1';
 
-// Lista de arquivos essenciais do "app shell" para serem cacheados na instalação.
+// Lista de arquivos essenciais do "app shell"
 const urlsToCache = [
   '/',
   'index.html',
@@ -21,9 +21,9 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   console.log('Service Worker: Instalando...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(APP_CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Adicionando arquivos ao cache...');
+        console.log('Service Worker: Adicionando App Shell ao cache...');
         return cache.addAll(urlsToCache);
       })
       .then(() => {
@@ -33,53 +33,77 @@ self.addEventListener('install', event => {
   );
 });
 
-// Evento 'activate': Limpa caches antigos se uma nova versão do SW for ativada.
+// Evento 'activate': Limpa caches antigos.
 self.addEventListener('activate', event => {
   console.log('Service Worker: Ativando...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
+          // Deleta tanto caches antigos do app quanto de músicas
+          if (cache !== APP_CACHE_NAME && cache !== MUSIC_CACHE_NAME) {
             console.log('Service Worker: Limpando cache antigo:', cache);
             return caches.delete(cache);
           }
         })
       );
-    }).then(() => {
-        return self.clients.claim();
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// Evento 'fetch' com a estratégia "Stale-While-Revalidate".
+// Evento 'fetch': Decide como responder a uma requisição.
 self.addEventListener('fetch', event => {
+  const { request } = event;
+
   // Ignora requisições que não são GET.
-  if (event.request.method !== 'GET') {
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Estratégia para arquivos de música: Cache First, fallback para Network
+  if (request.url.includes('/Musics/')) {
+    event.respondWith(
+      caches.open(MUSIC_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(request);
+        // Se encontrar no cache, retorna.
+        if (cachedResponse) {
+          // console.log(`SW: Servindo música do cache: ${request.url}`);
+          return cachedResponse;
+        }
+        // Se não, busca na rede.
+        try {
+          const networkResponse = await fetch(request);
+          // Se a resposta da rede for válida, clona, armazena no cache e retorna.
+          if (networkResponse && networkResponse.ok) {
+            console.log(`SW: Cacheando nova música: ${request.url}`);
+            cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (error) {
+          console.error(`SW: Falha ao buscar música da rede (offline?): ${request.url}`, error);
+          // Opcional: retornar uma resposta de erro padrão para áudio.
+        }
+      })
+    );
     return;
   }
 
-  event.respondWith((async () => {
-    // Abre o cache.
-    const cache = await caches.open(CACHE_NAME);
-
-    // 1. Tenta encontrar a resposta no cache.
-    const cachedResponse = await cache.match(event.request);
-
-    // 2. Em paralelo, busca a resposta na rede.
-    const fetchPromise = fetch(event.request).then(networkResponse => {
-      // Se a resposta da rede for bem-sucedida, atualiza o cache.
-      if (networkResponse && networkResponse.ok) {
-        cache.put(event.request, networkResponse.clone());
-      }
-      return networkResponse;
-    }).catch(err => {
-        // A rede falhou, o que é esperado quando offline.
-        console.warn(`Fetch falhou para: ${event.request.url}`, err);
-    });
-
-    // 3. Retorna a resposta do cache imediatamente se ela existir.
-    // Se não existir, espera a resposta da rede.
-    return cachedResponse || await fetchPromise;
-  })());
+  // Estratégia para o App Shell e outros assets: Stale-While-Revalidate
+  event.respondWith(
+    caches.open(APP_CACHE_NAME).then(async (cache) => {
+      const cachedResponse = await cache.match(request);
+      
+      const fetchPromise = fetch(request).then(networkResponse => {
+        if (networkResponse && networkResponse.ok) {
+          cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      }).catch(err => {
+        console.warn(`SW: Fetch falhou (offline?): ${request.url}`, err);
+      });
+      
+      // Retorna o cache se disponível, senão espera a rede.
+      return cachedResponse || await fetchPromise;
+    })
+  );
 });
