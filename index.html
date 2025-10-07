@@ -178,6 +178,11 @@
         #playlist-song-list .song-item .clickable-area:hover .song-number-container {
             opacity: 1;
         }
+
+        /* Destaque para música tocando na lista de busca */
+        #song-list .song-item.playing .song-title {
+            color: #1DB954;
+        }
     </style>
 </head>
 <body class="bg-black antialiased overflow-hidden" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
@@ -254,9 +259,12 @@
                     <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
                 </div>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
-                <div class="flex justify-center gap-4 my-6">
-                    <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform">Play</button>
-                    <button id="playlist-shuffle-btn" class="bg-zinc-800 text-white font-bold py-3 px-8 rounded-full hover:bg-zinc-700 transition-colors">Shuffle</button>
+                <div class="flex justify-center items-center gap-4 my-6">
+                    <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-6 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
+                    <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-6 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
+                    <button id="playlist-download-all-btn" class="border border-zinc-600 text-zinc-300 w-12 h-12 rounded-full hover:bg-zinc-700 transition-colors flex items-center justify-center" title="Baixar todas as músicas da playlist">
+                        <i class="fas fa-download"></i>
+                    </button>
                 </div>
             </div>
             <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
@@ -412,6 +420,7 @@
                 playlistSongList: document.getElementById('playlist-song-list'),
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
+                playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'), // NOVO BOTÃO
 
                 // Song Options Modal
                 songOptionsModal: document.getElementById('song-options-modal'),
@@ -473,6 +482,8 @@
             },
 
             registerServiceWorker() {
+                // Esta função registra o Service Worker, que é crucial para
+                // funcionalidades offline e para a música tocar em segundo plano.
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js')
                         .then(reg => console.log('Service Worker: Registrado'))
@@ -559,9 +570,10 @@
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
                 this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false));
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
+                this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist()); // NOVO EVENTO
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
 
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs));
+                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false)); // ALTERADO: Adicionado 'false'
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                     if(playlist) {
@@ -593,6 +605,9 @@
             },
 
             setupMediaSession() {
+                // A API Media Session permite que o sistema operacional (Android, iOS)
+                // saiba o que está tocando. Isso cria a notificação de mídia e
+                // os controles na tela de bloqueio, essenciais para o "tocar em segundo plano".
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.setActionHandler('play', () => this.play());
                     navigator.mediaSession.setActionHandler('pause', () => this.pause());
@@ -635,7 +650,7 @@
                 this.state.touchEndX = 0;
             },
 
-            handleSongListClick(event, songSourceList, isPlaylistContext = false) {
+            handleSongListClick(event, songSourceList, isPlaylistContext = false) { // ALTERADO: isPlaylistContext
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
                 const songId = parseInt(songItem.dataset.songId);
@@ -648,7 +663,11 @@
                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
                     this.loadSong(globalIndex, true, queueIndex);
-                    this.switchView('player-view');
+                    
+                    // ALTERADO: Apenas muda para a view do player se o clique veio de uma playlist
+                    if (isPlaylistContext) {
+                        this.switchView('player-view');
+                    }
                 }
             },
 
@@ -677,18 +696,13 @@
                 }
             },
 
-            async toggleSongOfflineStatus() {
-                const songId = this.state.songIdForOptions;
+            async toggleSongOfflineStatus(songIdToToggle = null) { // ALTERADO: Permite passar um ID
+                const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song) return;
-                if (song.isOffline) {
-                    this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, async () => {
-                        await this.deleteSongDataFromDB(songId);
-                        song.isOffline = false;
-                        await this.saveSongMetadataToDB(song);
-                        this.rerenderCurrentList();
-                    });
-                } else {
+
+                // Função interna para o download
+                const download = async () => {
                     console.log(`📥 Baixando "${song.title}"...`);
                     try {
                         const response = await fetch(song.path);
@@ -697,19 +711,42 @@
                         await this.saveSongDataToDB(song.id, blob);
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
+                        return true;
                     } catch (error) {
                         console.error("Erro no download:", error);
+                        return false;
                     } finally {
-                        this.rerenderCurrentList();
+                        if (!songIdToToggle) this.rerenderCurrentList(); // Só re-renderiza se não for em lote
                     }
+                };
+                
+                if (song.isOffline) {
+                    // Se a chamada veio de um clique no modal (sem songIdToToggle), pergunta antes de remover
+                    if (!songIdToToggle) {
+                        this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, async () => {
+                            await this.deleteSongDataFromDB(songId);
+                            song.isOffline = false;
+                            await this.saveSongMetadataToDB(song);
+                            this.rerenderCurrentList();
+                        });
+                    }
+                } else {
+                    await download();
                 }
             },
 
             rerenderCurrentList() {
-                const activeList = document.querySelector('.view.active ul');
-                if (!activeList) return;
-                if (activeList.id === 'song-list') this.renderSongList();
-                else if (activeList.id === 'playlist-song-list') this.showPlaylistDetails(this.state.currentPlaylistId);
+                const activeView = document.querySelector('.view.active');
+                if (!activeView) return;
+                
+                // Atualiza o destaque da música tocando, se a lista visível for a de busca
+                if (activeView.id === 'search-view') {
+                    this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
+                }
+                // Re-renderiza a lista da playlist se for a visão ativa
+                else if (activeView.id === 'playlist-details-view') {
+                    this.showPlaylistDetails(this.state.currentPlaylistId);
+                }
             },
 
             playPlaylist(shuffle = false) {
@@ -735,7 +772,7 @@
             
             async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
-            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}if(this.updatePlayerUI(o),"mediaSession"in navigator){navigator.mediaSession.metadata&&navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})}t&&this.play()}},
+            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}this.updatePlayerUI(o);this.updatePlayingSongUI(o.id);if("mediaSession"in navigator){navigator.mediaSession.metadata&&navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})}t&&this.play()}},
             play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
@@ -795,6 +832,52 @@
             async deletePlaylist(e){this.showConfirmationModal("Tem certeza que deseja excluir esta playlist?",async()=>{await this.deletePlaylistFromDB(e),await this.loadPlaylistsFromDB()})},
             showPlaylistDetails(e){this.state.currentPlaylistId=e;const t=this.state.playlists.find(t=>t.id===e);if(!t)return;this.dom.playlistDetailsTitle.textContent=t.name;const s=this.state.songs.filter(e=>t.songIds.includes(e.id)),o=s.length,i=s.reduce((e,t)=>e+(t.duration||0),0),a=Math.floor(i/60);this.dom.playlistDetailsMeta.textContent=`${o} música${o!==1?"s":""}, aprox. ${a} min`;const n=s[0];n&&n.coverBlob?(this.dom.playlistDetailsCoverImg.src=URL.createObjectURL(n.coverBlob),this.dom.playlistDetailsCoverImg.classList.remove("hidden"),this.dom.playlistDetailsCoverIcon.classList.add("hidden")):(this.dom.playlistDetailsCoverImg.classList.add("hidden"),this.dom.playlistDetailsCoverIcon.classList.remove("hidden")),this.renderSongList(s,this.dom.playlistSongList,!0),this.switchView("playlist-details-view")},
             
+            // --- NOVA FUNÇÃO ---
+            async downloadPlaylist() {
+                const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
+                if (!playlist) return;
+
+                const songsToDownload = playlist.songIds
+                    .map(id => this.state.songs.find(s => s.id === id))
+                    .filter(song => song && !song.isOffline);
+
+                if (songsToDownload.length === 0) {
+                    alert('Todas as músicas desta playlist já estão disponíveis offline.');
+                    return;
+                }
+
+                const btn = this.dom.playlistDownloadAllBtn;
+                const originalIcon = btn.innerHTML;
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+                btn.disabled = true;
+
+                for (const song of songsToDownload) {
+                    await this.toggleSongOfflineStatus(song.id);
+                }
+                
+                btn.innerHTML = originalIcon;
+                btn.disabled = false;
+                
+                // Re-renderiza a lista da playlist para mostrar os indicadores offline
+                this.showPlaylistDetails(this.state.currentPlaylistId);
+            },
+            
+            // --- NOVA FUNÇÃO ---
+            updatePlayingSongUI(playingSongId) {
+                // Remove a classe de todas as músicas na lista de busca
+                this.dom.songList.querySelectorAll('.song-item').forEach(item => {
+                    item.classList.remove('playing');
+                });
+
+                if (playingSongId === null || playingSongId === undefined) return;
+
+                // Adiciona a classe à música que está tocando
+                const currentSongItem = this.dom.songList.querySelector(`.song-item[data-song-id="${playingSongId}"]`);
+                if (currentSongItem) {
+                    currentSongItem.classList.add('playing');
+                }
+            },
+            
             // Funções de DB
             db:null,
             async initDB(){return new Promise((e,t)=>{const s=indexedDB.open("SpobrefyDB",4);s.onerror=o=>t("Erro ao abrir o DB"),s.onsuccess=t=>{this.db=t.target.result,e(this.db)},s.onupgradeneeded=e=>{const t=e.target.result;let s;t.objectStoreNames.contains("songs")?s=e.target.transaction.objectStore("songs"):s=t.createObjectStore("songs",{keyPath:"id",autoIncrement:!0}),s.indexNames.contains("title")||s.createIndex("title","title",{unique:!1}),s.indexNames.contains("artist")||s.createIndex("artist","artist",{unique:!1}),t.objectStoreNames.contains("songData")||t.createObjectStore("songData",{keyPath:"id"}),t.objectStoreNames.contains("playlists")||t.createObjectStore("playlists",{keyPath:"id",autoIncrement:!0})}})},
@@ -806,7 +889,7 @@
             async getSongDataFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["songData"],"readonly"),i=o.objectStore("songData"),a=i.get(e);a.onsuccess=e=>t(e.target.result?.data),a.onerror=s})},
             async deleteSongDataFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["songData"],"readwrite"),i=o.objectStore("songData");i.delete(e),o.oncomplete=t,o.onerror=s})},
             async deleteSongFromDB(e){return await this.deleteSongDataFromDB(e),new Promise((t,s)=>{const o=this.db.transaction(["songs"],"readwrite"),i=o.objectStore("songs");i.delete(e),o.oncomplete=t,o.onerror=s})},
-            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result,this.renderSongList(),e(this.state.songs)},i.onerror=t})},
+            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result;this.renderSongList();this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);e(this.state.songs)},i.onerror=t})},
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
