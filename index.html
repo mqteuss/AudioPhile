@@ -189,7 +189,7 @@
             </div>
         </div>
 
-        <div id="search-view" class="view p-6 md:p-8 pb-20">
+        <div id="search-view" class="view p-6 md:p-8 pb-32">
             <h1 class="text-3xl font-bold mb-6">Buscar</h1>
             <div class="flex items-center gap-3 mb-6">
                 <div class="relative flex-grow">
@@ -208,12 +208,12 @@
             <ul id="song-list" class="space-y-1 mt-4"></ul>
         </div>
 
-        <div id="playlists-view" class="view p-6 md:p-8 pb-20">
+        <div id="playlists-view" class="view p-6 md:p-8 pb-32">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
                <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
         </div>
 
-        <div id="playlist-details-view" class="view p-6 md:p-8 pb-20">
+        <div id="playlist-details-view" class="view p-6 md:p-8 pb-32">
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center min-w-0">
                     <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
@@ -349,6 +349,7 @@
                 touchStartX: 0,
                 touchEndX: 0,
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
+                currentObjectUrl: null, // <-- MUDANÇA: Adicionado para gerenciar memória
             },
 
             audio: new Audio(),
@@ -358,7 +359,7 @@
                 await this.initDB();
                 this.bindEvents();
 
-                // 1. CHAMAR A NOVA FUNÇÃO DE SETUP DA MEDIA SESSION
+                // <-- MUDANÇA: Configura os handlers da Media Session na inicialização
                 this.setupMediaSession();
 
                 await this.loadSongsFromDB();
@@ -466,7 +467,7 @@
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
             
-            // 2. NOVA FUNÇÃO PARA CONFIGURAR OS HANDLERS DA MEDIA SESSION
+            // <-- MUDANÇA: Nova função para configurar os controles de mídia do S.O.
             setupMediaSession() {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.setActionHandler('play', () => {
@@ -713,8 +714,15 @@
                 });
             },
 
+            // <-- MUDANÇA: Função totalmente atualizada
             async loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
                 if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
+
+                // Revoga o URL do objeto antigo para liberar memória
+                if (this.state.currentObjectUrl) {
+                    URL.revokeObjectURL(this.state.currentObjectUrl);
+                    this.state.currentObjectUrl = null;
+                }
 
                 this.state.currentSongIndex = globalIndex;
                 const song = this.state.songs[globalIndex];
@@ -725,7 +733,8 @@
                         console.log(`▶️ Tocando offline: ${song.title}`);
                         const songData = await this.getSongDataFromDB(song.id);
                         if (songData) {
-                            this.audio.src = URL.createObjectURL(songData);
+                            this.state.currentObjectUrl = URL.createObjectURL(songData);
+                            this.audio.src = this.state.currentObjectUrl;
                         } else {
                             console.warn("Dado offline não encontrado, fazendo streaming.");
                             this.audio.src = song.path;
@@ -741,11 +750,11 @@
 
                 this.updatePlayerUI(song);
 
-                // 3. ATUALIZAR OS METADADOS DA MEDIA SESSION
+                // Atualiza os metadados na notificação do sistema
                 if ('mediaSession' in navigator) {
                     const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
                     navigator.mediaSession.metadata = new MediaMetadata({
-                        title: song.title,
+                        title: song.title || 'Título Desconhecido',
                         artist: song.artist || 'Artista Desconhecido',
                         album: 'Spobrefy',
                         artwork: [
@@ -765,7 +774,7 @@
                     .catch(e => console.error("Erro ao tocar:", e));
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
 
-                // 4. ATUALIZAR O ESTADO DE REPRODUÇÃO DA MEDIA SESSION
+                // <-- MUDANÇA: Informa ao sistema que a música está tocando
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'playing';
                 }
@@ -776,7 +785,7 @@
                 this.audio.pause();
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>';
 
-                // 4. ATUALIZAR O ESTADO DE REPRODUÇÃO DA MEDIA SESSION
+                // <-- MUDANÇA: Informa ao sistema que a música está pausada
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'paused';
                 }
@@ -816,8 +825,15 @@
                 if (this.state.repeatMode === 'one') {
                     this.audio.currentTime = 0;
                     this.play();
-                } else {
-                    this.changeTrack('next');
+                } else if (this.state.repeatMode === 'all' || this.state.repeatMode === 'none') {
+                    const isLastInQueue = this.state.currentQueueIndex === this.state.playQueue.length - 1;
+                    if (this.state.repeatMode === 'all' || !isLastInQueue) {
+                        this.changeTrack('next');
+                    } else {
+                        // Se for a última música e o repeat for 'none', para de tocar
+                        this.pause();
+                        this.audio.currentTime = 0;
+                    }
                 }
             },
             
@@ -890,7 +906,7 @@
                 }
                 this.dom.currentTimeEl.textContent = this.formatTime(currentTime);
 
-                // 5. (BÔNUS) ATUALIZAR A POSIÇÃO DA MÚSICA NA NOTIFICAÇÃO
+                // <-- MUDANÇA: Atualiza a barra de progresso na notificação do sistema
                 if ('mediaSession' in navigator && this.audio.duration) {
                     navigator.mediaSession.setPositionState({
                         duration: this.audio.duration,
@@ -1071,7 +1087,7 @@
                     });
                 });
             },
-
+            
             readRemoteAudioMetadata(url) {
                 return fetch(url)
                     .then(response => {
