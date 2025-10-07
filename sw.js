@@ -13,7 +13,8 @@ const urlsToCache = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js',
   'icon-192x192.png',
-  'icon-512x512.png'
+  'icon-512x512.png', 
+  'icon-maskable-512x512.png' 
   // Adicione aqui outros arquivos estáticos importantes, como um arquivo CSS se você criar um.
 ];
 
