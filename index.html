@@ -245,8 +245,9 @@
                 <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
             </div>
             <div class="text-center px-4">
-                <div id="playlist-details-cover" class="w-48 h-48 mx-auto rounded-lg bg-zinc-800 flex items-center justify-center shadow-lg mb-4">
-                    <i class="fas fa-music text-6xl text-zinc-600"></i>
+                <div id="playlist-details-cover" class="w-48 h-48 mx-auto rounded-lg bg-zinc-800 flex items-center justify-center shadow-lg mb-4 overflow-hidden">
+                    <img id="playlist-details-cover-img" src="" alt="Capa da Playlist" class="w-full h-full object-cover hidden">
+                    <i id="playlist-details-cover-icon" class="fas fa-music text-6xl text-zinc-600"></i>
                 </div>
                 <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
@@ -289,10 +290,11 @@
         </div>
     </div>
 
-    <div id="add-to-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
-        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
-             <h2 class="text-xl font-bold text-center mb-4">Adicionar à playlist</h2>
+    <div id="add-to-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-end sm:items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-2 shadow-2xl transform translate-y-full sm:translate-y-0 sm:scale-95">
+             <h2 class="text-xl font-bold text-center p-4">Adicionar à playlist</h2>
              <div id="playlist-selection-list" class="max-h-60 overflow-y-auto"></div>
+             <button id="add-to-playlist-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
 
@@ -310,6 +312,17 @@
              <button id="options-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
+    
+    <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
+             <p id="confirmation-modal-text" class="text-center mb-6"></p>
+             <div class="flex justify-end gap-3">
+                 <button id="confirmation-cancel-btn" class="px-5 py-2 rounded-full font-semibold transition-colors hover:bg-zinc-700">Cancelar</button>
+                 <button id="confirmation-ok-btn" class="bg-red-500 text-white px-5 py-2 rounded-full font-semibold transition-colors hover:bg-red-400">OK</button>
+             </div>
+        </div>
+    </div>
+
 
     <template id="song-item-template">
         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
@@ -370,6 +383,8 @@
                 searchInput: document.getElementById('search-input'),
                 playlistGrid: document.getElementById('playlist-grid'),
                 playlistItemTemplate: document.getElementById('playlist-item-template'),
+                
+                // Modals
                 createPlaylistBtn: document.getElementById('create-playlist-btn'),
                 createPlaylistModal: document.getElementById('create-playlist-modal'),
                 cancelPlaylistBtn: document.getElementById('cancel-playlist-btn'),
@@ -377,12 +392,21 @@
                 playlistNameInput: document.getElementById('playlist-name-input'),
                 addToPlaylistModal: document.getElementById('add-to-playlist-modal'),
                 playlistSelectionList: document.getElementById('playlist-selection-list'),
+                addToPlaylistCancelBtn: document.getElementById('add-to-playlist-cancel-btn'),
+                
+                // Playlist Details
                 playlistDetailsView: document.getElementById('playlist-details-view'),
                 backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
                 playlistDetailsTitle: document.getElementById('playlist-details-title'),
                 playlistDetailsMeta: document.getElementById('playlist-details-meta'),
                 playlistDetailsCover: document.getElementById('playlist-details-cover'),
+                playlistDetailsCoverImg: document.getElementById('playlist-details-cover-img'),
+                playlistDetailsCoverIcon: document.getElementById('playlist-details-cover-icon'),
                 playlistSongList: document.getElementById('playlist-song-list'),
+                playlistPlayBtn: document.getElementById('playlist-play-btn'),
+                playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
+
+                // Song Options Modal
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -392,6 +416,12 @@
                 optionsRemoveFromPlaylistLi: document.getElementById('options-remove-from-playlist-li'),
                 optionsDownloadBtn: document.getElementById('options-download-btn'),
                 optionsCancelBtn: document.getElementById('options-cancel-btn'),
+
+                // Confirmation Modal
+                confirmationModal: document.getElementById('confirmation-modal'),
+                confirmationModalText: document.getElementById('confirmation-modal-text'),
+                confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'),
+                confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
             },
 
             state: {
@@ -413,6 +443,7 @@
                 debounceTimer: null,
                 songIdForOptions: null,
                 isPlaylistContextForOptions: false,
+                confirmationCallback: null,
             },
 
             audio: new Audio(),
@@ -485,6 +516,7 @@
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.createPlaylist());
                 this.dom.createPlaylistModal.addEventListener('click', e => { if (e.target === this.dom.createPlaylistModal) this.showPlaylistModal(false); });
                 this.dom.addToPlaylistModal.addEventListener('click', e => { if (e.target === this.dom.addToPlaylistModal) this.showAddToPlaylistModal(false); });
+                this.dom.addToPlaylistCancelBtn.addEventListener('click', () => this.showAddToPlaylistModal(false));
                 this.dom.playlistSelectionList.addEventListener('click', e => {
                     const listItem = e.target.closest('[data-playlist-id]');
                     if(listItem) this.addSongToPlaylist(parseInt(listItem.dataset.playlistId));
@@ -497,6 +529,15 @@
                 this.dom.optionsRemoveFromPlaylistBtn.addEventListener('click', () => { this.removeSongFromPlaylist(); this.showSongOptionsModal(false); });
                 this.dom.optionsDownloadBtn.addEventListener('click', () => { this.toggleSongOfflineStatus(); this.showSongOptionsModal(false); });
 
+                // Confirmation Modal
+                this.dom.confirmationCancelBtn.addEventListener('click', () => this.showConfirmationModal(null, null, false));
+                this.dom.confirmationOkBtn.addEventListener('click', () => {
+                    if (typeof this.state.confirmationCallback === 'function') {
+                        this.state.confirmationCallback();
+                    }
+                    this.showConfirmationModal(null, null, false);
+                });
+
                 // Listas
                 this.dom.playlistGrid.addEventListener('click', e => {
                     const delBtn = e.target.closest('.delete-playlist-btn');
@@ -506,6 +547,8 @@
                     else if (area) this.showPlaylistDetails(parseInt(entry.dataset.id));
                 });
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
+                this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false));
+                this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs));
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -571,7 +614,7 @@
                 if (playlist && songId && !playlist.songIds.includes(songId)) {
                     playlist.songIds.push(songId);
                     await this.savePlaylistToDB(playlist);
-                    await this.loadPlaylistsFromDB(); // Atualiza a contagem de músicas
+                    await this.loadPlaylistsFromDB();
                 }
                 this.showAddToPlaylistModal(false);
             },
@@ -580,11 +623,12 @@
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 const songId = this.state.songIdForOptions;
                 if (playlist && songId) {
-                    playlist.songIds = playlist.songIds.filter(id => id !== songId);
-                    await this.savePlaylistToDB(playlist);
-                    // Recarrega a view da playlist para refletir a remoção
-                    this.showPlaylistDetails(this.state.currentPlaylistId); 
-                    await this.loadPlaylistsFromDB(); // Atualiza a contagem de músicas
+                    this.showConfirmationModal(`Remover "${this.state.songs.find(s => s.id === songId).title}" da playlist?`, async () => {
+                        playlist.songIds = playlist.songIds.filter(id => id !== songId);
+                        await this.savePlaylistToDB(playlist);
+                        this.showPlaylistDetails(this.state.currentPlaylistId); 
+                        await this.loadPlaylistsFromDB();
+                    });
                 }
             },
 
@@ -594,14 +638,16 @@
                 if (!song) return;
 
                 if (song.isOffline) {
-                    if (confirm(`Deseja remover a versão offline de "${song.title}"?`)) {
+                    this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, async () => {
                         console.log(`🗑️ Removendo offline: "${song.title}"`);
                         await this.deleteSongDataFromDB(songId);
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
-                    }
+                        this.rerenderCurrentList();
+                    });
                 } else {
                     console.log(`📥 Baixando "${song.title}"...`);
+                    // Opcional: Adicionar feedback de UI para download em progresso
                     try {
                         const response = await fetch(song.path);
                         if (!response.ok) throw new Error(`Falha ao baixar: ${response.statusText}`);
@@ -612,19 +658,47 @@
                         console.log(`✅ "${song.title}" baixada com sucesso!`);
                     } catch (error) {
                         console.error("Erro no download:", error);
+                    } finally {
+                        this.rerenderCurrentList();
                     }
                 }
-                // Re-renderiza a lista visível para atualizar o ícone de offline
+            },
+
+            rerenderCurrentList() {
                 const activeList = document.querySelector('.view.active ul');
+                if (!activeList) return;
                 if (activeList.id === 'song-list') this.renderSongList();
                 else if (activeList.id === 'playlist-song-list') this.showPlaylistDetails(this.state.currentPlaylistId);
             },
 
-            // O resto das funções (player, DB, etc.) permanecem as mesmas
+            playPlaylist(shuffle = false) {
+                const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
+                if (!playlist || playlist.songIds.length === 0) return;
+
+                let songsInPlaylist = playlist.songIds.map(id => this.state.songs.find(s => s.id === id)).filter(Boolean);
+                
+                this.state.isShuffle = shuffle;
+                this.updateShuffleButtonUI();
+
+                if (shuffle) {
+                    // Algoritmo Fisher-Yates para embaralhar
+                    for (let i = songsInPlaylist.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [songsInPlaylist[i], songsInPlaylist[j]] = [songsInPlaylist[j], songsInPlaylist[i]];
+                    }
+                }
+
+                this.state.playQueue = songsInPlaylist;
+                const firstSong = this.state.playQueue[0];
+                const globalIndex = this.state.songs.findIndex(s => s.id === firstSong.id);
+                
+                this.loadSong(globalIndex, true, 0);
+                this.switchView('player-view');
+            },
             
             async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
-            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}this.updatePlayerUI(o),"mediaSession"in navigator&&navigator.mediaSession.metadata&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";"mediaSession"in navigator&&(navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})),t&&this.play()}},
+            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}if(this.updatePlayerUI(o),"mediaSession"in navigator){navigator.mediaSession.metadata&&navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})}t&&this.play()}},
             play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
@@ -643,11 +717,12 @@
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
             showPlaylistModal(e){e?(this.dom.createPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.remove("scale-95"),this.dom.playlistNameInput.focus()):(this.dom.createPlaylistModal.classList.add("opacity-0"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>this.dom.createPlaylistModal.classList.add("pointer-events-none"),300))},
-            showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
+            showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
             showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
+            showConfirmationModal(e,t,s=!0){s?(this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300))},
             async createPlaylist(){const e=this.dom.playlistNameInput.value.trim();if(!e)return;const t={name:e,songIds:[]};await this.savePlaylistToDB(t),this.dom.playlistNameInput.value="",this.showPlaylistModal(!1),await this.loadPlaylistsFromDB()},
-            async deletePlaylist(e){confirm("Tem certeza que deseja excluir esta playlist?")&&(await this.deletePlaylistFromDB(e),await this.loadPlaylistsFromDB())},
-            showPlaylistDetails(e){this.state.currentPlaylistId=e;const t=this.state.playlists.find(t=>t.id===e);if(!t)return;this.dom.playlistDetailsTitle.textContent=t.name;const s=this.state.songs.filter(e=>t.songIds.includes(e.id)),o=s.length,i=s.reduce((e,t)=>e+(t.duration||0),0),a=Math.floor(i/60);this.dom.playlistDetailsMeta.textContent=`${o} música${o!==1?"s":""}, ${a} min`,this.renderSongList(s,this.dom.playlistSongList,!0),this.switchView("playlist-details-view")},
+            async deletePlaylist(e){this.showConfirmationModal("Tem certeza que deseja excluir esta playlist?",async()=>{await this.deletePlaylistFromDB(e),await this.loadPlaylistsFromDB()})},
+            showPlaylistDetails(e){this.state.currentPlaylistId=e;const t=this.state.playlists.find(t=>t.id===e);if(!t)return;this.dom.playlistDetailsTitle.textContent=t.name;const s=this.state.songs.filter(e=>t.songIds.includes(e.id)),o=s.length,i=s.reduce((e,t)=>e+(t.duration||0),0),a=Math.floor(i/60);this.dom.playlistDetailsMeta.textContent=`${o} música${o!==1?"s":""}, ${a} min`;const n=s[0];n&&n.coverBlob?(this.dom.playlistDetailsCoverImg.src=URL.createObjectURL(n.coverBlob),this.dom.playlistDetailsCoverImg.classList.remove("hidden"),this.dom.playlistDetailsCoverIcon.classList.add("hidden")):(this.dom.playlistDetailsCoverImg.classList.add("hidden"),this.dom.playlistDetailsCoverIcon.classList.remove("hidden")),this.renderSongList(s,this.dom.playlistSongList,!0),this.switchView("playlist-details-view")},
             db:null,
             async initDB(){return new Promise((e,t)=>{const s=indexedDB.open("SpobrefyDB",4);s.onerror=o=>t("Erro ao abrir o DB"),s.onsuccess=t=>{this.db=t.target.result,e(this.db)},s.onupgradeneeded=e=>{const t=e.target.result;let s;t.objectStoreNames.contains("songs")?s=e.target.transaction.objectStore("songs"):s=t.createObjectStore("songs",{keyPath:"id",autoIncrement:!0}),s.indexNames.contains("title")||s.createIndex("title","title",{unique:!1}),s.indexNames.contains("artist")||s.createIndex("artist","artist",{unique:!1}),t.objectStoreNames.contains("songData")||t.createObjectStore("songData",{keyPath:"id"}),t.objectStoreNames.contains("playlists")||t.createObjectStore("playlists",{keyPath:"id",autoIncrement:!0})}})},
             async addMusicFiles(e){try{for(const t of e){const s=await this.readAudioMetadata(t),o={...s,path:null,isOffline:!0},i=await this.saveSongMetadataToDB(o,!0);await this.saveSongDataToDB(i,t)}await this.loadSongsFromDB()}catch(s){console.error("Erro ao processar os arquivos:",s)}},
@@ -662,10 +737,10 @@
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
-            cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&URL.revokeObjectURL(e.src)})},
+            cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})()},
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
-            renderPlaylistSelectionList(){this.dom.playlistSelectionList.innerHTML="",this.state.playlists.length===0?this.dom.playlistSelectionList.innerHTML='<p class="text-zinc-400 text-center">Nenhuma playlist criada.</p>':(()=>{const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=document.createElement("div");s.className="p-3 rounded-lg hover:bg-zinc-700 cursor-pointer",s.textContent=t.name,s.dataset.playlistId=t.id,e.appendChild(s)}),this.dom.playlistSelectionList.appendChild(e)})()}
+            renderPlaylistSelectionList(){this.dom.playlistSelectionList.innerHTML="";const e=this.state.songIdForOptions;this.state.playlists.length===0?this.dom.playlistSelectionList.innerHTML='<p class="text-zinc-400 text-center">Nenhuma playlist criada.</p>':(()=>{const t=document.createDocumentFragment();this.state.playlists.forEach(s=>{const o=document.createElement("div");o.className="flex items-center justify-between p-3 rounded-lg hover:bg-zinc-700 cursor-pointer",o.dataset.playlistId=s.id;const i=document.createElement("span");i.textContent=s.name,o.appendChild(i);const a=s.songIds.includes(e);a&&(()=>{const n=document.createElement("i");n.className="fas fa-check text-green-500",o.appendChild(n)}),o.classList.toggle("opacity-50",a),o.classList.toggle("pointer-events-none",a),t.appendChild(s)}),this.dom.playlistSelectionList.appendChild(t)})()}
         };
 
         App.init();
