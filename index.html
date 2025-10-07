@@ -267,7 +267,7 @@
     <template id="song-item-template">
         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
             <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
-                <img class="song-cover w-12 h-12 rounded-md object-cover" src="" alt="Capa">
+                <img class="song-cover w-12 h-12 rounded-md object-cover" src="https://placehold.co/100x100/27272a/3f3f46?text=?" alt="Capa" loading="lazy">
                 <div class="flex-grow min-w-0">
                     <p class="song-title font-semibold truncate"></p>
                     <p class="song-artist text-sm text-zinc-400 truncate"></p>
@@ -283,7 +283,7 @@
     <template id="playlist-item-template">
         <div class="playlist-item-grid-entry group flex items-center justify-between gap-4 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/80 transition-colors">
             <div class="playlist-clickable-area flex-grow flex items-center gap-4 cursor-pointer">
-                <img class="playlist-cover w-16 h-16 rounded-md object-cover" src="" alt="Capa da Playlist">
+                 <img class="playlist-cover w-16 h-16 rounded-md object-cover" src="https://placehold.co/100x100/101010/1DB954?text=PLAY" alt="Capa da Playlist" loading="lazy">
                 <div>
                     <p class="playlist-name font-semibold"></p>
                     <p class="playlist-song-count text-sm text-zinc-400"></p>
@@ -350,14 +350,17 @@
                 touchEndX: 0,
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
                 currentObjectUrl: null,
-                currentPlayerCoverUrl: null, // Otimização: Gerenciar URL de objeto da capa do player
+                currentPlayerCoverUrl: null,
+                debounceTimer: null, // Otimização: Timer para debounce da busca
             },
 
             audio: new Audio(),
+            imageObserver: null, // Otimização: Observer para lazy loading
 
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
+                this.setupImageObserver();
                 this.bindEvents();
                 this.setupMediaSession();
                 await this.loadSongsFromDB();
@@ -378,6 +381,16 @@
                         .then(registration => console.log('Service Worker registrado com sucesso:', registration))
                         .catch(error => console.log('Falha ao registrar Service Worker:', error));
                 }
+            },
+
+            // Otimização: Função debounce para evitar chamadas excessivas
+            debounce(func, delay) {
+                return (...args) => {
+                    clearTimeout(this.state.debounceTimer);
+                    this.state.debounceTimer = setTimeout(() => {
+                        func.apply(this, args);
+                    }, delay);
+                };
             },
 
             animateIcon(element) {
@@ -411,7 +424,10 @@
                         });
                     }
                 });
-                this.dom.searchInput.addEventListener('input', (e) => this.filterSongList(e.target.value));
+
+                // Otimização: Aplicando debounce na busca
+                this.dom.searchInput.addEventListener('input', this.debounce((e) => this.filterSongList(e.target.value), 250));
+                
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(true));
                 this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.createPlaylist());
@@ -450,6 +466,23 @@
                 this.dom.appContent.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', (e) => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
+            },
+            
+            // Otimização: Configura o IntersectionObserver para o lazy loading das imagens
+            setupImageObserver() {
+                this.imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const src = img.getAttribute('data-src');
+                            if (src) {
+                                img.src = src;
+                                img.removeAttribute('data-src');
+                            }
+                            observer.unobserve(img); // Deixa de observar a imagem após carregar
+                        }
+                    });
+                }, { rootMargin: "100px" }); // Carrega a imagem 100px antes de ela entrar na tela
             },
 
             setupMediaSession() {
@@ -505,8 +538,11 @@
                 if (downloadBtn) {
                     const song = this.state.songs.find(s => s.id === songId);
                     if (song) {
-                        if (song.isOffline) { await this.deleteOfflineSong(songId); } 
-                        else { await this.downloadSong(songId); }
+                        if (song.isOffline) { 
+                            await this.deleteOfflineSong(songId, songItem); // Passa o elemento para evitar re-query
+                        } else { 
+                            await this.downloadSong(songId, songItem); // Passa o elemento para evitar re-query
+                        }
                     }
                 } else if (playlistActionBtn) {
                     if (isPlaylistContext) { this.removeSongFromPlaylist(songId, this.state.currentPlaylistId); } 
@@ -520,11 +556,11 @@
                 }
             },
 
-            async downloadSong(songId) {
+            async downloadSong(songId, songItemElement) {
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song || song.isOffline) return;
                 console.log(`📥 Baixando "${song.title}"...`);
-                this.updateSongItemUI(songId, { isDownloading: true });
+                this.updateSongItemUI(songItemElement, song, { isDownloading: true });
                 try {
                     const response = await fetch(song.path);
                     if (!response.ok) throw new Error(`Falha ao baixar: ${response.statusText}`);
@@ -536,11 +572,11 @@
                 } catch (error) {
                     console.error("Erro no download:", error);
                 } finally {
-                    this.updateSongItemUI(songId, { isDownloading: false });
+                    this.updateSongItemUI(songItemElement, song, { isDownloading: false });
                 }
             },
 
-            async deleteOfflineSong(songId) {
+            async deleteOfflineSong(songId, songItemElement) {
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song || !song.isOffline) return;
                 if (confirm(`Deseja remover a versão offline de "${song.title}"?`)) {
@@ -548,34 +584,34 @@
                     await this.deleteSongDataFromDB(songId);
                     song.isOffline = false;
                     await this.saveSongMetadataToDB(song);
-                    this.updateSongItemUI(songId);
+                    this.updateSongItemUI(songItemElement, song);
                 }
             },
 
-            updateSongItemUI(songId, { isDownloading = false } = {}) {
-                document.querySelectorAll(`.song-item[data-song-id="${songId}"]`).forEach(item => {
-                    const song = this.state.songs.find(s => s.id === songId);
-                    if (!song) return;
-                    const downloadBtnIcon = item.querySelector('.download-btn i');
-                    const offlineIndicator = item.querySelector('.offline-indicator');
-                    downloadBtnIcon.className = 'fas';
-                    if (isDownloading) {
-                        downloadBtnIcon.classList.add('fa-spinner', 'fa-spin');
-                        item.querySelector('.download-btn').disabled = true;
+            // Otimização: Recebe o elemento e o objeto song para não precisar buscá-los novamente.
+            updateSongItemUI(item, song, { isDownloading = false } = {}) {
+                if (!item || !song) return;
+                
+                const downloadBtnIcon = item.querySelector('.download-btn i');
+                const offlineIndicator = item.querySelector('.offline-indicator');
+                downloadBtnIcon.className = 'fas';
+                
+                if (isDownloading) {
+                    downloadBtnIcon.classList.add('fa-spinner', 'fa-spin');
+                    item.querySelector('.download-btn').disabled = true;
+                } else {
+                    item.querySelector('.download-btn').disabled = false;
+                    if (song.isOffline) {
+                        downloadBtnIcon.classList.add('fa-trash-can');
+                        item.querySelector('.download-btn').title = "Remover do offline";
                     } else {
-                        item.querySelector('.download-btn').disabled = false;
-                        if (song.isOffline) {
-                            downloadBtnIcon.classList.add('fa-trash-can');
-                            item.querySelector('.download-btn').title = "Remover do offline";
-                        } else {
-                            downloadBtnIcon.classList.add('fa-download');
-                            item.querySelector('.download-btn').title = "Baixar música";
-                        }
+                        downloadBtnIcon.classList.add('fa-download');
+                        item.querySelector('.download-btn').title = "Baixar música";
                     }
-                    offlineIndicator.classList.toggle('hidden', !song.isOffline);
-                });
+                }
+                offlineIndicator.classList.toggle('hidden', !song.isOffline);
             },
-
+            
             async syncWithServerFolder() {
                 try {
                     const musicFiles = [
@@ -790,23 +826,18 @@
             updatePlayerUI(song) {
                 this.dom.trackTitle.textContent = song.title || 'Título Desconhecido';
                 this.dom.trackArtist.textContent = song.artist || 'Artista Desconhecido';
-
-                // Otimização: Libera a URL do objeto anterior para evitar vazamento de memória
                 if (this.state.currentPlayerCoverUrl) {
                     URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
                     this.state.currentPlayerCoverUrl = null;
                 }
-
                 const placeholder = 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
                 let coverUrl;
-
                 if (song.coverBlob) {
                     this.state.currentPlayerCoverUrl = URL.createObjectURL(song.coverBlob);
                     coverUrl = this.state.currentPlayerCoverUrl;
                 } else {
                     coverUrl = placeholder;
                 }
-
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
@@ -938,7 +969,6 @@
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    // Otimização: Incrementar a versão do DB para aplicar as mudanças de índice
                     const request = indexedDB.open('SpobrefyDB', 4);
                     request.onerror = (event) => reject("Erro ao abrir o DB");
                     request.onsuccess = (event) => {
@@ -953,15 +983,12 @@
                         } else {
                             songStore = event.target.transaction.objectStore('songs');
                         }
-                        
-                        // Otimização: Adicionar índices para buscas futuras mais rápidas
                         if (!songStore.indexNames.contains('title')) {
                             songStore.createIndex('title', 'title', { unique: false });
                         }
                         if (!songStore.indexNames.contains('artist')) {
                             songStore.createIndex('artist', 'artist', { unique: false });
                         }
-
                         if (!db.objectStoreNames.contains('songData')) { db.createObjectStore('songData', { keyPath: 'id' }); }
                         if (!db.objectStoreNames.contains('playlists')) { db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true }); }
                     };
@@ -976,7 +1003,7 @@
                             title: metadata.title,
                             artist: metadata.artist,
                             album: metadata.album,
-                            coverBlob: metadata.coverBlob, // Otimização: Salvar blob
+                            coverBlob: metadata.coverBlob,
                             path: null,
                             isOffline: true,
                         };
@@ -996,7 +1023,6 @@
                             const { title, artist, album, picture } = tag.tags;
                             let coverBlob = null;
                             if (picture) {
-                                // Otimização: Criar um Blob em vez de uma string Base64
                                 coverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
                             }
                             resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, album, coverBlob });
@@ -1021,7 +1047,6 @@
                                     const { title, artist, album, picture } = tag.tags;
                                     let coverBlob = null;
                                     if (picture) {
-                                        // Otimização: Criar um Blob em vez de uma string Base64
                                         coverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
                                     }
                                     const fileName = url.split('/').pop();
@@ -1156,8 +1181,19 @@
                 });
             },
 
+            // Otimização: Função para limpar URLs de objeto e evitar vazamento de memória.
+            cleanupObjectURLs(container) {
+                container.querySelectorAll('img').forEach(img => {
+                    if (img.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(img.src);
+                    }
+                });
+            },
+
             renderSongList(songsToRender = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
+                this.cleanupObjectURLs(container);
                 container.innerHTML = '';
+
                 const hasSongs = songsToRender.length > 0;
                 if (container === this.dom.songList) {
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
@@ -1167,32 +1203,34 @@
                     songsToRender.forEach((song) => {
                         const item = this.dom.songItemTemplate.content.cloneNode(true);
                         const li = item.querySelector('.song-item');
-                        const playlistActionBtnIcon = item.querySelector('.playlist-action-btn i');
-                        const downloadBtn = item.querySelector('.download-btn');
-                        const downloadBtnIcon = downloadBtn.querySelector('i');
-                        const offlineIndicator = item.querySelector('.offline-indicator');
-
+                        const img = item.querySelector('.song-cover');
                         li.dataset.songId = song.id;
-                        const placeholder = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
-                        // Otimização: Usa URL.createObjectURL se o blob da capa existir
-                        const coverSrc = song.coverBlob ? URL.createObjectURL(song.coverBlob) : placeholder;
-                        item.querySelector('.song-cover').src = coverSrc;
+
+                        if (song.coverBlob) {
+                            const coverSrc = URL.createObjectURL(song.coverBlob);
+                            img.setAttribute('data-src', coverSrc); // Para lazy loading
+                        } else {
+                            img.setAttribute('data-src', 'https://placehold.co/100x100/27272a/3f3f46?text=?');
+                        }
+                        this.imageObserver.observe(img); // Observa a imagem para carregar quando visível
                         
                         item.querySelector('.song-title').textContent = song.title;
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+
                         if (isPlaylistContext) {
-                            playlistActionBtnIcon.classList.remove('fa-plus');
-                            playlistActionBtnIcon.classList.add('fa-trash-can');
+                            const playlistActionBtnIcon = item.querySelector('.playlist-action-btn i');
+                            playlistActionBtnIcon.classList.replace('fa-plus', 'fa-trash-can');
                             playlistActionBtnIcon.parentElement.title = "Remover da playlist";
                         }
-                        if (song.isOffline) {
-                            downloadBtnIcon.classList.remove('fa-download');
-                            downloadBtnIcon.classList.add('fa-trash-can');
-                            downloadBtn.title = "Remover do offline";
-                            offlineIndicator.classList.remove('hidden');
+                        
+                        const downloadBtn = item.querySelector('.download-btn');
+                        if (song.path) { // Só mostra o botão de download se a música tiver um caminho online
+                           this.updateSongItemUI(li, song);
                         } else {
-                            downloadBtn.classList.toggle('hidden', !song.path);
+                           downloadBtn.classList.add('hidden');
+                           item.querySelector('.offline-indicator').classList.remove('hidden');
                         }
+                        
                         fragment.appendChild(item);
                     });
                     container.appendChild(fragment);
@@ -1200,31 +1238,33 @@
             },
             
             renderPlaylistGrid() {
+                this.cleanupObjectURLs(this.dom.playlistGrid);
                 this.dom.playlistGrid.innerHTML = '';
+
                 const fragment = document.createDocumentFragment();
                 this.state.playlists.forEach(playlist => {
                     const item = this.dom.playlistItemTemplate.content.cloneNode(true);
                     const entry = item.querySelector('.playlist-item-grid-entry');
+                    const img = item.querySelector('.playlist-cover');
                     entry.dataset.id = playlist.id;
                     item.querySelector('.playlist-name').textContent = playlist.name;
                     item.querySelector('.playlist-song-count').textContent = `${playlist.songIds.length} músicas`;
-
-                    const placeholder = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
-                    let coverSrc = placeholder;
-
+                    
+                    let coverSrc = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
                     if (playlist.songIds.length > 0) {
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
                         if (firstSong && firstSong.coverBlob) {
-                            // Otimização: Usa URL.createObjectURL se o blob da capa existir
                             coverSrc = URL.createObjectURL(firstSong.coverBlob);
                         }
                     }
-                    item.querySelector('.playlist-cover').src = coverSrc;
+                    img.setAttribute('data-src', coverSrc); // Para lazy loading
+                    this.imageObserver.observe(img);
                     
                     fragment.appendChild(item);
                 });
                 this.dom.playlistGrid.appendChild(fragment);
             },
+
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
                 if(this.state.playlists.length === 0) {
