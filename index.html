@@ -23,6 +23,8 @@
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
             color: #e5e5e5;
+            /* Desabilita o pull-to-refresh nativo */
+            overscroll-behavior-y: contain;
         }
 
         #app-background {
@@ -184,6 +186,15 @@
             color: #1DB954;
             font-weight: 700;
         }
+
+        /* Animação do vinil para recarregar */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinning {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-black antialiased overflow-hidden" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
@@ -193,85 +204,91 @@
     <input type="file" id="music-folder-input" webkitdirectory directory multiple class="hidden">
 
     <main id="app-content" class="h-screen w-screen relative">
-
-        <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
-            <div class="w-full max-w-sm">
-                <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=Spobrefy" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
-                <div class="text-center my-8">
-                    <h2 id="track-title" class="text-2xl font-bold truncate">Bem-vindo!</h2>
-                    <h3 id="track-artist" class="text-md text-zinc-400 truncate">Sincronize ou adicione suas músicas</h3>
-                </div>
-                <div>
-                     <div class="progress-container mb-2">
-                         <input type="range" id="progress-bar" class="w-full appearance-none cursor-pointer" value="0" step="1">
-                         <div class="flex justify-between text-xs text-zinc-400 mt-1.5">
-                             <span id="current-time">0:00</span>
-                             <span id="duration">0:00</span>
-                         </div>
-                     </div>
-                     <div class="flex justify-between items-center text-zinc-200 px-2 my-6">
-                         <button id="shuffle-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Aleatório"><i class="fas fa-shuffle text-xl"></i></button>
-                         <button id="prev-btn" class="control-btn p-2 transition-colors" title="Anterior"><i class="fas fa-backward-step text-4xl"></i></button>
-                         <button id="play-pause-btn" class="control-btn bg-white text-black rounded-full w-20 h-20 flex items-center justify-center hover:scale-105 transition-transform shadow-lg" title="Play/Pause"><i class="fas fa-play text-3xl ml-1"></i></button>
-                         <button id="next-btn" class="control-btn p-2 transition-colors" title="Próxima"><i class="fas fa-forward-step text-4xl"></i></button>
-                         <button id="repeat-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Repetir"><i class="fas fa-repeat text-xl"></i></button>
-                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="search-view" class="view p-6 md:p-8 pb-32">
-            <h1 class="text-3xl font-bold mb-6">Buscar</h1>
-            <div class="sticky top-0 bg-black/80 backdrop-blur-sm z-10 -mx-6 px-6 pb-4 pt-6 -mt-6">
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-grow">
-                        <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
-                    </div>
-                    <button id="download-all-btn" title="Baixar todas as músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-12 h-12 flex items-center justify-center rounded-lg relative">
-                        <i class="fas fa-cloud-download-alt text-xl"></i>
-                        <span id="download-progress" class="absolute -top-2 -right-2 text-xs bg-green-500 text-black rounded-full px-1.5 py-0.5 font-bold hidden"></span>
-                    </button>
-                    <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-12 h-12 flex items-center justify-center rounded-lg">
-                        <i class="fas fa-folder-plus text-xl"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
-                <i class="fas fa-music text-5xl mb-4"></i>
-                <h3 class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
-                <p>Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
-            </div>
-            <ul id="song-list" class="space-y-1 mt-4"></ul>
-        </div>
-
-        <div id="playlists-view" class="view p-6 md:p-8 pb-32">
-             <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
-               <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
-        </div>
-
-        <div id="playlist-details-view" class="view p-6 md:p-8 pb-32">
-            <div class="flex items-center mb-4">
-                <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
-            </div>
-            <div class="text-center px-4">
-                <div id="playlist-details-cover" class="w-48 h-48 mx-auto rounded-lg bg-zinc-800 flex items-center justify-center shadow-lg mb-4 overflow-hidden">
-                    <img id="playlist-details-cover-img" src="" alt="Capa da Playlist" class="w-full h-full object-cover hidden">
-                    <i id="playlist-details-cover-icon" class="fas fa-music text-6xl text-zinc-600"></i>
-                </div>
-                <div class="flex items-center justify-center gap-2">
-                    <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
-                    <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
-                </div>
-                <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
-                <div class="flex justify-center gap-4 my-6">
-                    <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform">Play</button>
-                    <button id="playlist-shuffle-btn" class="bg-zinc-800 text-white font-bold py-3 px-8 rounded-full hover:bg-zinc-700 transition-colors">Shuffle</button>
-                </div>
-            </div>
-            <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
-        </div>
     </main>
+
+    <div id="custom-pull-container" class="fixed top-0 left-0 right-0 h-20 flex justify-center items-center -translate-y-full transition-transform duration-300 z-50" style="padding-top: env(safe-area-inset-top);">
+        <div id="vinyl-icon" class="text-4xl text-zinc-400 transition-transform duration-200">
+            <i class="fas fa-compact-disc"></i>
+        </div>
+    </div>
+
+    <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
+        <div class="w-full max-w-sm">
+            <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=Spobrefy" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
+            <div class="text-center my-8">
+                <h2 id="track-title" class="text-2xl font-bold truncate">Bem-vindo!</h2>
+                <h3 id="track-artist" class="text-md text-zinc-400 truncate">Sincronize ou adicione suas músicas</h3>
+            </div>
+            <div>
+                 <div class="progress-container mb-2">
+                     <input type="range" id="progress-bar" class="w-full appearance-none cursor-pointer" value="0" step="1">
+                     <div class="flex justify-between text-xs text-zinc-400 mt-1.5">
+                         <span id="current-time">0:00</span>
+                         <span id="duration">0:00</span>
+                     </div>
+                 </div>
+                 <div class="flex justify-between items-center text-zinc-200 px-2 my-6">
+                     <button id="shuffle-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Aleatório"><i class="fas fa-shuffle text-xl"></i></button>
+                     <button id="prev-btn" class="control-btn p-2 transition-colors" title="Anterior"><i class="fas fa-backward-step text-4xl"></i></button>
+                     <button id="play-pause-btn" class="control-btn bg-white text-black rounded-full w-20 h-20 flex items-center justify-center hover:scale-105 transition-transform shadow-lg" title="Play/Pause"><i class="fas fa-play text-3xl ml-1"></i></button>
+                     <button id="next-btn" class="control-btn p-2 transition-colors" title="Próxima"><i class="fas fa-forward-step text-4xl"></i></button>
+                     <button id="repeat-btn" class="control-btn p-2 w-12 h-12 flex items-center justify-center transition-colors relative" title="Repetir"><i class="fas fa-repeat text-xl"></i></button>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="search-view" class="view p-6 md:p-8 pb-32">
+        <h1 class="text-3xl font-bold mb-6">Buscar</h1>
+        <div class="sticky top-0 bg-black/80 backdrop-blur-sm z-10 -mx-6 px-6 pb-4 pt-6 -mt-6">
+            <div class="flex items-center gap-3">
+                <div class="relative flex-grow">
+                    <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+                </div>
+                <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-12 h-12 flex items-center justify-center rounded-lg">
+                    <i class="fas fa-folder-plus text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
+            <i class="fas fa-music text-5xl mb-4"></i>
+            <h3 class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
+            <p>Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
+        </div>
+        <ul id="song-list" class="space-y-1 mt-4"></ul>
+    </div>
+
+    <div id="playlists-view" class="view p-6 md:p-8 pb-32">
+         <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
+           <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
+    </div>
+
+    <div id="playlist-details-view" class="view p-6 md:p-8 pb-32">
+        <div class="flex items-center mb-4">
+            <button id="back-to-playlists-btn" class="p-2 mr-2 flex-shrink-0"><i class="fas fa-arrow-left text-xl"></i></button>
+        </div>
+        <div class="text-center px-4">
+            <div id="playlist-details-cover" class="w-48 h-48 mx-auto rounded-lg bg-zinc-800 flex items-center justify-center shadow-lg mb-4 overflow-hidden">
+                <img id="playlist-details-cover-img" src="" alt="Capa da Playlist" class="w-full h-full object-cover hidden">
+                <i id="playlist-details-cover-icon" class="fas fa-music text-6xl text-zinc-600"></i>
+            </div>
+            <div class="flex items-center justify-center gap-2">
+                <h1 id="playlist-details-title" class="text-3xl font-bold truncate">Nome da Playlist</h1>
+                <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
+                <button id="download-playlist-btn" title="Baixar músicas da playlist" class="text-zinc-500 hover:text-white relative">
+                    <i class="fas fa-cloud-download-alt text-lg"></i>
+                    <span id="download-playlist-progress" class="absolute -top-2 -right-3 text-xs bg-green-500 text-black rounded-full px-1.5 py-0.5 font-bold hidden"></span>
+                </button>
+            </div>
+            <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
+            <div class="flex justify-center gap-4 my-6">
+                <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform">Play</button>
+                <button id="playlist-shuffle-btn" class="bg-zinc-800 text-white font-bold py-3 px-8 rounded-full hover:bg-zinc-700 transition-colors">Shuffle</button>
+            </div>
+        </div>
+        <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
+    </div>
 
     <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
         <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
@@ -291,7 +308,6 @@
             <span class="text-xs">Criar</span>
         </button>
     </nav>
-
     <div id="create-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <h2 id="playlist-modal-title" class="text-xl font-bold text-center mb-4">Criar nova playlist</h2>
@@ -302,7 +318,6 @@
              </div>
         </div>
     </div>
-
     <div id="add-to-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-end sm:items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-2 shadow-2xl transform translate-y-full sm:translate-y-0 sm:scale-95">
              <h2 class="text-xl font-bold text-center p-4">Adicionar à playlist</h2>
@@ -310,7 +325,6 @@
              <button id="add-to-playlist-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
-
     <div id="song-options-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-end sm:items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-2 shadow-2xl transform translate-y-full sm:translate-y-0 sm:scale-95">
             <div class="p-4 border-b border-zinc-700">
@@ -325,7 +339,6 @@
              <button id="options-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
-    
     <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <p id="confirmation-modal-text" class="text-center mb-6"></p>
@@ -354,7 +367,6 @@
             </button>
         </li>
     </template>
-
     <template id="playlist-item-template">
         <div class="playlist-item-grid-entry group flex items-center justify-between gap-4 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/80 transition-colors">
             <div class="playlist-clickable-area flex-grow flex items-center gap-4 cursor-pointer">
@@ -391,8 +403,6 @@
                 navButtons: document.querySelectorAll('.nav-btn'),
                 views: document.querySelectorAll('.view'),
                 addMusicBtn: document.getElementById('add-music-btn'),
-                downloadAllBtn: document.getElementById('download-all-btn'),
-                downloadProgress: document.getElementById('download-progress'),
                 musicFolderInput: document.getElementById('music-folder-input'),
                 songList: document.getElementById('song-list'),
                 libraryEmptyState: document.getElementById('library-empty-state'),
@@ -401,6 +411,10 @@
                 playlistGrid: document.getElementById('playlist-grid'),
                 playlistItemTemplate: document.getElementById('playlist-item-template'),
 
+                // Pull to Refresh
+                pullContainer: document.getElementById('custom-pull-container'),
+                vinylIcon: document.getElementById('vinyl-icon'),
+                
                 // Modals
                 createPlaylistBtn: document.getElementById('create-playlist-btn'),
                 createPlaylistModal: document.getElementById('create-playlist-modal'),
@@ -411,12 +425,14 @@
                 addToPlaylistModal: document.getElementById('add-to-playlist-modal'),
                 playlistSelectionList: document.getElementById('playlist-selection-list'),
                 addToPlaylistCancelBtn: document.getElementById('add-to-playlist-cancel-btn'),
-
+                
                 // Playlist Details
                 playlistDetailsView: document.getElementById('playlist-details-view'),
                 backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
                 playlistDetailsTitle: document.getElementById('playlist-details-title'),
                 editPlaylistTitleBtn: document.getElementById('edit-playlist-title-btn'),
+                downloadPlaylistBtn: document.getElementById('download-playlist-btn'),
+                downloadPlaylistProgress: document.getElementById('download-playlist-progress'),
                 playlistDetailsMeta: document.getElementById('playlist-details-meta'),
                 playlistDetailsCover: document.getElementById('playlist-details-cover'),
                 playlistDetailsCoverImg: document.getElementById('playlist-details-cover-img'),
@@ -455,7 +471,8 @@
                 currentQueueIndex: -1,
                 restoredState: null,
                 touchStartX: 0,
-                touchEndX: 0,
+                touchStartY: 0,
+                isPulling: false,
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
                 currentObjectUrl: null,
                 currentPlayerCoverUrl: null,
@@ -470,6 +487,9 @@
             imageObserver: null,
 
             async init() {
+                // Mover as views para dentro do #app-content
+                document.querySelectorAll('.view').forEach(view => this.dom.appContent.appendChild(view));
+
                 this.registerServiceWorker();
                 await this.initDB();
                 this.setupImageObserver();
@@ -527,7 +547,6 @@
 
                 // Adicionar Músicas e Busca
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
-                this.dom.downloadAllBtn.addEventListener('click', () => this.downloadAllSongs());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
 
@@ -573,8 +592,9 @@
                 this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false));
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
+                this.dom.downloadPlaylistBtn.addEventListener('click', () => this.downloadAllSongs(this.state.currentPlaylistId));
 
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs));
+                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                     if(playlist) {
@@ -583,12 +603,12 @@
                     }
                 });
 
-                // Gestos
+                // Gestos (Pull to Refresh e Swipe)
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
-                this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
-                this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
+                this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), { passive: false });
+                this.dom.appContent.addEventListener('touchend', e => this.handleTouchEnd(e), false);
             },
-
+            
             setupImageObserver() {
                 this.imageObserver = new IntersectionObserver((entries, observer) => {
                     entries.forEach(entry => {
@@ -617,54 +637,100 @@
                 }
             },
 
-            // Funções de Toque (Swipe)
+            // Funções de Toque (Pull to Refresh e Swipe)
             handleTouchStart(event) {
                 const target = event.target.closest('button, input[type="range"], .progress-container, .modal-content');
-                if (target) { this.state.touchStartX = 0; return; }
-                this.state.touchStartX = event.changedTouches[0].screenX;
-            },
-            handleTouchMove(event) {
-                this.state.touchEndX = event.changedTouches[0].screenX;
-            },
-            handleTouchEnd() {
-                if (this.state.touchStartX === 0 || this.state.touchEndX === 0) return;
-                const threshold = 60;
-                const swipeDistance = this.state.touchEndX - this.state.touchStartX;
-                const isSwipe = Math.abs(swipeDistance) > threshold;
-                if (isSwipe) {
-                    const activeView = document.querySelector('.view.active');
-                    if (!activeView) return;
-                    const currentIndex = this.state.viewOrder.indexOf(activeView.id);
-                    if (currentIndex === -1) return;
-                    let nextIndex;
-                    if (swipeDistance < 0) { // Swipe para a esquerda
-                        nextIndex = Math.min(currentIndex + 1, this.state.viewOrder.length - 1);
-                    } else { // Swipe para a direita
-                        nextIndex = Math.max(currentIndex - 1, 0);
-                    }
-                    if (nextIndex !== currentIndex) {
-                        const nextViewId = this.state.viewOrder[nextIndex];
-                        this.switchView(nextViewId);
-                    }
+                if (target) return;
+
+                const activeView = document.querySelector('.view.active');
+                if (activeView && activeView.scrollTop === 0) {
+                    this.state.touchStartY = event.touches[0].clientY;
+                    this.state.touchStartX = event.touches[0].clientX;
+                    this.state.isPulling = true;
+                } else {
+                    this.state.touchStartX = event.touches[0].clientX;
+                    this.state.touchStartY = 0; // Reseta para não confundir com pull
+                    this.state.isPulling = false;
                 }
-                this.state.touchStartX = 0;
-                this.state.touchEndX = 0;
             },
 
-            handleSongListClick(event, songSourceList, isPlaylistContext = false) {
+            handleTouchMove(event) {
+                if (!this.state.isPulling) return;
+
+                const deltaX = event.touches[0].clientX - this.state.touchStartX;
+                const deltaY = event.touches[0].clientY - this.state.touchStartY;
+
+                // Se o gesto for mais vertical e para baixo, é um "pull"
+                if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0) {
+                    event.preventDefault();
+                    this.dom.pullContainer.style.transition = 'none';
+                    const threshold = 100;
+                    const pullRatio = Math.min(deltaY, threshold);
+                    this.dom.pullContainer.style.transform = `translateY(${pullRatio - threshold}px)`;
+                    this.dom.vinylIcon.style.transform = `rotate(${deltaY * 2}deg)`;
+                    this.dom.vinylIcon.classList.toggle('text-green-500', deltaY >= threshold);
+                } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Se começou a deslizar para o lado, cancela o "pull"
+                    this.state.isPulling = false;
+                    this.dom.pullContainer.style.transition = 'transform 0.3s ease';
+                    this.dom.pullContainer.style.transform = 'translateY(-100%)';
+                }
+            },
+
+            handleTouchEnd(event) {
+                const wasPulling = this.state.isPulling && (event.touches[0] || event.changedTouches[0]).clientY - this.state.touchStartY > 10;
+                this.dom.pullContainer.style.transition = 'transform 0.3s ease';
+
+                if (wasPulling) {
+                    const pullDistance = this.dom.pullContainer.getBoundingClientRect().bottom;
+                    const threshold = 100;
+
+                    if (pullDistance >= threshold) {
+                        this.dom.vinylIcon.classList.add('spinning');
+                        this.dom.pullContainer.style.transform = `translateY(${threshold / 2 - threshold}px)`;
+                        setTimeout(() => window.location.reload(), 500);
+                    } else {
+                        this.dom.pullContainer.style.transform = 'translateY(-100%)';
+                        this.dom.vinylIcon.style.transform = 'rotate(0deg)';
+                        this.dom.vinylIcon.classList.remove('text-green-500');
+                    }
+                } else { // Lógica do swipe lateral
+                    const deltaX = (event.touches[0] || event.changedTouches[0]).clientX - this.state.touchStartX;
+                    const thresholdX = 60;
+                    if (Math.abs(deltaX) > thresholdX) {
+                        const activeView = document.querySelector('.view.active');
+                        const currentIndex = this.state.viewOrder.indexOf(activeView.id);
+                        if (currentIndex === -1) return;
+                        const nextIndex = deltaX < 0
+                            ? Math.min(currentIndex + 1, this.state.viewOrder.length - 1)
+                            : Math.max(currentIndex - 1, 0);
+                        if (nextIndex !== currentIndex) {
+                            this.switchView(this.state.viewOrder[nextIndex]);
+                        }
+                    }
+                }
+                this.state.isPulling = false;
+                this.state.touchStartX = 0;
+                this.state.touchStartY = 0;
+            },
+            
+            handleSongListClick(event, songSourceList, fromPlaylistView = false) {
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
                 const songId = parseInt(songItem.dataset.songId);
                 if (event.target.closest('.options-btn')) {
                     this.state.songIdForOptions = songId;
-                    this.state.isPlaylistContextForOptions = isPlaylistContext;
+                    this.state.isPlaylistContextForOptions = fromPlaylistView;
                     this.showSongOptionsModal(true);
                 } else if (event.target.closest('.clickable-area')) {
                     this.state.playQueue = [...songSourceList]; 
                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
                     this.loadSong(globalIndex, true, queueIndex);
-                    this.switchView('player-view');
+                    // Só muda para a aba Player se o clique veio de uma playlist
+                    if(fromPlaylistView) {
+                        this.switchView('player-view');
+                    }
                 }
             },
 
@@ -708,26 +774,34 @@
                 }
             },
 
-            async downloadAllSongs() {
-                const songsToDownload = this.state.songs.filter(s => s.path && !s.isOffline);
-                if (songsToDownload.length === 0) {
-                    alert("Todas as músicas já estão disponíveis offline!");
+            async downloadAllSongs(playlistId) {
+                const songsToDownload = playlistId 
+                    ? this.state.playlists.find(p => p.id === playlistId).songIds.map(id => this.state.songs.find(s => s.id === id))
+                    : this.state.songs;
+
+                const filteredSongs = songsToDownload.filter(s => s && s.path && !s.isOffline);
+
+                if (filteredSongs.length === 0) {
+                    alert("Todas as músicas desta playlist já estão disponíveis offline!");
                     return;
                 }
                 
-                this.dom.downloadProgress.classList.remove('hidden');
-                this.dom.downloadAllBtn.disabled = true;
+                const progressEl = playlistId ? this.dom.downloadPlaylistProgress : this.dom.downloadProgress;
+                const buttonEl = playlistId ? this.dom.downloadPlaylistBtn : this.dom.downloadAllBtn;
 
-                for (let i = 0; i < songsToDownload.length; i++) {
-                    const song = songsToDownload[i];
-                    this.dom.downloadProgress.textContent = `${i + 1}/${songsToDownload.length}`;
-                    console.log(`Baixando ${i + 1}/${songsToDownload.length}: ${song.title}`);
+                progressEl.classList.remove('hidden');
+                buttonEl.disabled = true;
+
+                for (let i = 0; i < filteredSongs.length; i++) {
+                    const song = filteredSongs[i];
+                    progressEl.textContent = `${i + 1}/${filteredSongs.length}`;
+                    console.log(`Baixando ${i + 1}/${filteredSongs.length}: ${song.title}`);
                     await this.downloadSong(song.id);
                 }
 
-                this.dom.downloadProgress.classList.add('hidden');
-                this.dom.downloadAllBtn.disabled = false;
-                alert("Download de todas as músicas concluído!");
+                progressEl.classList.add('hidden');
+                buttonEl.disabled = false;
+                alert("Download concluído!");
                 this.rerenderCurrentList();
             },
 
@@ -749,10 +823,10 @@
             },
 
             rerenderCurrentList() {
-                const activeList = document.querySelector('.view.active ul');
-                if (!activeList) return;
-                if (activeList.id === 'song-list') this.renderSongList();
-                else if (activeList.id === 'playlist-song-list') this.showPlaylistDetails(this.state.currentPlaylistId);
+                const activeView = document.querySelector('.view.active');
+                if (!activeView) return;
+                if (activeView.id === 'search-view') this.renderSongList();
+                else if (activeView.id === 'playlist-details-view') this.showPlaylistDetails(this.state.currentPlaylistId);
             },
 
             playPlaylist(shuffle = false) {
@@ -773,7 +847,7 @@
                 this.loadSong(globalIndex, true, 0);
                 this.switchView('player-view');
             },
-
+            
             async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0;const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){t=!0;for(const c of l)await this.deleteSongFromDB(c.id)}t&&(await this.loadSongsFromDB(),await this.loadPlaylistsFromDB())}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
             async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];if(this.state.currentQueueIndex=s,this.updatePlayingSongInLists(),!o)return;try{if(o.isOffline){const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):this.audio.src=o.path}else this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}if(this.updatePlayerUI(o),"mediaSession"in navigator){navigator.mediaSession.metadata&&navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})}t&&this.play()}},
@@ -829,7 +903,7 @@
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})(),this.updatePlayingSongInLists()},
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
-            renderPlaylistSelectionList(){this.dom.playlistSelectionList.innerHTML="";const e=this.state.songIdForOptions;if(this.state.playlists.length===0)return void(this.dom.playlistSelectionList.innerHTML='<p class="text-zinc-400 text-center p-4">Nenhuma playlist criada.</p>');const t=document.createDocumentFragment();this.state.playlists.forEach(s=>{const o=document.createElement("button");o.className="w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left",o.dataset.playlistId=s.id;const i=document.createElement("span");i.textContent=s.name,o.appendChild(i);const a=s.songIds.includes(e);a&&(o.disabled=!0,o.classList.add("opacity-60","cursor-not-allowed"));const n=document.createElement("i");n.className=`fas ${a?"fa-check text-green-500":"fa-plus text-zinc-400"}`,o.appendChild(n),t.appendChild(o)}),this.dom.playlistSelectionList.appendChild(t)}
+            renderPlaylistSelectionList(){this.dom.playlistSelectionList.innerHTML="";const e=this.state.songIdForOptions;if(this.state.playlists.length===0)return void(this.dom.playlistSelectionList.innerHTML='<p class="text-zinc-400 text-center p-4">Nenhuma playlist criada.</p>');const t=document.createDocumentFragment();this.state.playlists.forEach(s=>{const o=document.createElement("button");o.className="w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left",o.dataset.playlistId=s.id;const i=document.createElement("span");i.textContent=s.name,o.appendChild(i);const a=s.songIds.includes(e);if(a){const n=document.createElement("i");n.className="fas fa-check text-green-500",o.appendChild(n),o.disabled=!0,o.classList.add("opacity-60","cursor-not-allowed")}t.appendChild(o)}),this.dom.playlistSelectionList.appendChild(t)}
         };
 
         App.init();
