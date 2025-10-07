@@ -1,7 +1,7 @@
 // sw.js
 
 // Define um nome e versão para o nosso cache. Mudar a versão força a atualização do cache.
-const CACHE_NAME = 'spobrefy-cache-v32';
+const CACHE_NAME = 'spobrefy-cache-v33';
 
 // Lista de arquivos essenciais do "app shell" para serem cacheados na instalação.
 const urlsToCache = [
@@ -13,26 +13,21 @@ const urlsToCache = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js',
   'icon-192x192.png',
-  'icon-512x512.png', 
-  'icon-maskable-512x512.png' 
-  // Adicione aqui outros arquivos estáticos importantes, como um arquivo CSS se você criar um.
+  'icon-512x512.png',
+  'icon-maskable-512x512.png'
 ];
 
 // Evento 'install': Salva os arquivos essenciais no cache.
 self.addEventListener('install', event => {
   console.log('Service Worker: Instalando...');
-  // O navegador espera essa operação terminar.
   event.waitUntil(
-    // Abre o cache com o nome que definimos.
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Service Worker: Adicionando arquivos ao cache...');
-        // Adiciona todos os nossos arquivos da lista ao cache.
         return cache.addAll(urlsToCache);
       })
       .then(() => {
         console.log('Service Worker: Instalação concluída.');
-        // Força o novo service worker a se tornar ativo imediatamente.
         return self.skipWaiting();
       })
   );
@@ -52,50 +47,39 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-        // Assume o controle da página imediatamente.
         return self.clients.claim();
     })
   );
 });
 
-
-// Evento 'fetch': Intercepta requisições, serve do cache e adiciona novos itens ao cache dinamicamente.
+// Evento 'fetch' com a estratégia "Stale-While-Revalidate".
 self.addEventListener('fetch', event => {
   // Ignora requisições que não são GET.
   if (event.request.method !== 'GET') {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Se encontrar no cache, retorna a resposta do cache.
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+  event.respondWith((async () => {
+    // Abre o cache.
+    const cache = await caches.open(CACHE_NAME);
 
-        // Se não encontrar, faz a requisição à rede.
-        return fetch(event.request).then(
-          networkResponse => {
-            // Verifica se a resposta da rede é válida. (Ex: ignora extensões do Chrome)
-            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-              return networkResponse;
-            }
+    // 1. Tenta encontrar a resposta no cache.
+    const cachedResponse = await cache.match(event.request);
 
-            // IMPORTANTE: Clona a resposta. Uma resposta é um "stream"
-            // e só pode ser consumida uma vez. Precisamos de um clone para
-            // colocar no cache e outro para o navegador renderizar.
-            const responseToCache = networkResponse.clone();
+    // 2. Em paralelo, busca a resposta na rede.
+    const fetchPromise = fetch(event.request).then(networkResponse => {
+      // Se a resposta da rede for bem-sucedida, atualiza o cache.
+      if (networkResponse && networkResponse.ok) {
+        cache.put(event.request, networkResponse.clone());
+      }
+      return networkResponse;
+    }).catch(err => {
+        // A rede falhou, o que é esperado quando offline.
+        console.warn(`Fetch falhou para: ${event.request.url}`, err);
+    });
 
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                // Adiciona a nova resposta ao cache para futuras requisições.
-                cache.put(event.request, responseToCache);
-              });
-
-            return networkResponse;
-          }
-        );
-      })
-  );
+    // 3. Retorna a resposta do cache imediatamente se ela existir.
+    // Se não existir, espera a resposta da rede.
+    return cachedResponse || await fetchPromise;
+  })());
 });
