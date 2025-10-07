@@ -58,7 +58,7 @@ self.addEventListener('activate', event => {
 });
 
 
-// Evento 'fetch': Intercepta as requisições e serve do cache se possível.
+// Evento 'fetch': Intercepta requisições, serve do cache e adiciona novos itens ao cache dinamicamente.
 self.addEventListener('fetch', event => {
   // Ignora requisições que não são GET.
   if (event.request.method !== 'GET') {
@@ -66,17 +66,35 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    // 1. Tenta encontrar a requisição no cache.
     caches.match(event.request)
       .then(cachedResponse => {
         // Se encontrar no cache, retorna a resposta do cache.
         if (cachedResponse) {
-          // console.log('Service Worker: Servindo do cache:', event.request.url);
           return cachedResponse;
         }
-        // 2. Se não encontrar, faz a requisição à rede.
-        // console.log('Service Worker: Buscando da rede:', event.request.url);
-        return fetch(event.request);
+
+        // Se não encontrar, faz a requisição à rede.
+        return fetch(event.request).then(
+          networkResponse => {
+            // Verifica se a resposta da rede é válida. (Ex: ignora extensões do Chrome)
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            // IMPORTANTE: Clona a resposta. Uma resposta é um "stream"
+            // e só pode ser consumida uma vez. Precisamos de um clone para
+            // colocar no cache e outro para o navegador renderizar.
+            const responseToCache = networkResponse.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                // Adiciona a nova resposta ao cache para futuras requisições.
+                cache.put(event.request, responseToCache);
+              });
+
+            return networkResponse;
+          }
+        );
       })
   );
 });
