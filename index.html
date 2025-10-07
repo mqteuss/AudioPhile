@@ -355,33 +355,18 @@
 
             audio: new Audio(),
 
-// Dentro do objeto App, substitua a função init existente
-
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
                 this.bindEvents();
                 this.setupMediaSession();
-                
-                // 1. Carrega tudo que é local primeiro para o app funcionar offline
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
-                
-                // 2. Verifica se há conexão antes de tentar sincronizar com o servidor
-                if (navigator.onLine) {
-                    console.log("✅ Online. Sincronizando catálogo com a pasta /Musics...");
-                    await this.syncWithServerFolder();
-                } else {
-                    console.log("❌ Offline. Pulando sincronização com o servidor. Usando dados locais.");
-                }
-
-                // 3. Restaura o último estado de reprodução
+                console.log("🔄 Sincronizando catálogo com a pasta /Musics...");
+                await this.syncWithServerFolder();
                 await this.loadPlaybackState();
-                
                 this.updateRepeatButtonUI();
                 this.updateShuffleButtonUI();
-                
-                // Se nenhuma música foi restaurada, vai para a tela de player
                 if (this.state.currentSongIndex === -1) {
                     this.switchView('player-view');
                 }
