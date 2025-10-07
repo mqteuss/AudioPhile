@@ -349,7 +349,7 @@
                 touchStartX: 0,
                 touchEndX: 0,
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
-                currentObjectUrl: null, // <-- MUDANÇA: Adicionado para gerenciar memória
+                currentObjectUrl: null,
             },
 
             audio: new Audio(),
@@ -359,7 +359,6 @@
                 await this.initDB();
                 this.bindEvents();
 
-                // <-- MUDANÇA: Configura os handlers da Media Session na inicialização
                 this.setupMediaSession();
 
                 await this.loadSongsFromDB();
@@ -467,7 +466,6 @@
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
             
-            // <-- MUDANÇA: Nova função para configurar os controles de mídia do S.O.
             setupMediaSession() {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.setActionHandler('play', () => {
@@ -713,11 +711,9 @@
                 });
             },
 
-            // <-- MUDANÇA: Função totalmente atualizada
             async loadSong(globalIndex, shouldPlay = false, queueIndex = -1) {
                 if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
 
-                // Revoga o URL do objeto antigo para liberar memória
                 if (this.state.currentObjectUrl) {
                     URL.revokeObjectURL(this.state.currentObjectUrl);
                     this.state.currentObjectUrl = null;
@@ -749,7 +745,6 @@
 
                 this.updatePlayerUI(song);
 
-                // Atualiza os metadados na notificação do sistema
                 if ('mediaSession' in navigator) {
                     const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -773,7 +768,6 @@
                     .catch(e => console.error("Erro ao tocar:", e));
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>';
 
-                // <-- MUDANÇA: Informa ao sistema que a música está tocando
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'playing';
                 }
@@ -784,7 +778,6 @@
                 this.audio.pause();
                 this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>';
 
-                // <-- MUDANÇA: Informa ao sistema que a música está pausada
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'paused';
                 }
@@ -829,7 +822,6 @@
                     if (this.state.repeatMode === 'all' || !isLastInQueue) {
                         this.changeTrack('next');
                     } else {
-                        // Se for a última música e o repeat for 'none', para de tocar
                         this.pause();
                         this.audio.currentTime = 0;
                     }
@@ -905,7 +897,6 @@
                 }
                 this.dom.currentTimeEl.textContent = this.formatTime(currentTime);
 
-                // <-- MUDANÇA: Atualiza a barra de progresso na notificação do sistema
                 if ('mediaSession' in navigator && this.audio.duration) {
                     navigator.mediaSession.setPositionState({
                         duration: this.audio.duration,
