@@ -350,6 +350,7 @@
                 touchEndX: 0,
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
                 currentObjectUrl: null,
+                currentPlayerCoverUrl: null, // Otimização: Gerenciar URL de objeto da capa do player
             },
 
             audio: new Audio(),
@@ -664,12 +665,12 @@
                 }
                 this.updatePlayerUI(song);
                 if ('mediaSession' in navigator) {
-                    const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
+                    const artworkSrc = song.coverBlob ? URL.createObjectURL(song.coverBlob) : 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: song.title || 'Título Desconhecido',
                         artist: song.artist || 'Artista Desconhecido',
                         album: song.album || 'Spobrefy',
-                        artwork: [{ src: coverUrl, sizes: '512x512', type: 'image/jpeg' }]
+                        artwork: [{ src: artworkSrc, sizes: '512x512', type: song.coverBlob?.type || 'image/jpeg' }]
                     });
                 }
                 if (shouldPlay) this.play();
@@ -789,7 +790,23 @@
             updatePlayerUI(song) {
                 this.dom.trackTitle.textContent = song.title || 'Título Desconhecido';
                 this.dom.trackArtist.textContent = song.artist || 'Artista Desconhecido';
-                const coverUrl = song.coverUrl || 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
+
+                // Otimização: Libera a URL do objeto anterior para evitar vazamento de memória
+                if (this.state.currentPlayerCoverUrl) {
+                    URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
+                    this.state.currentPlayerCoverUrl = null;
+                }
+
+                const placeholder = 'https://placehold.co/500x500/101010/1DB954?text=Spobrefy';
+                let coverUrl;
+
+                if (song.coverBlob) {
+                    this.state.currentPlayerCoverUrl = URL.createObjectURL(song.coverBlob);
+                    coverUrl = this.state.currentPlayerCoverUrl;
+                } else {
+                    coverUrl = placeholder;
+                }
+
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
@@ -921,7 +938,8 @@
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open('SpobrefyDB', 3);
+                    // Otimização: Incrementar a versão do DB para aplicar as mudanças de índice
+                    const request = indexedDB.open('SpobrefyDB', 4);
                     request.onerror = (event) => reject("Erro ao abrir o DB");
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
@@ -929,7 +947,21 @@
                     };
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
-                        if (!db.objectStoreNames.contains('songs')) { db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true }); }
+                        let songStore;
+                        if (!db.objectStoreNames.contains('songs')) { 
+                            songStore = db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true }); 
+                        } else {
+                            songStore = event.target.transaction.objectStore('songs');
+                        }
+                        
+                        // Otimização: Adicionar índices para buscas futuras mais rápidas
+                        if (!songStore.indexNames.contains('title')) {
+                            songStore.createIndex('title', 'title', { unique: false });
+                        }
+                        if (!songStore.indexNames.contains('artist')) {
+                            songStore.createIndex('artist', 'artist', { unique: false });
+                        }
+
                         if (!db.objectStoreNames.contains('songData')) { db.createObjectStore('songData', { keyPath: 'id' }); }
                         if (!db.objectStoreNames.contains('playlists')) { db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true }); }
                     };
@@ -944,7 +976,7 @@
                             title: metadata.title,
                             artist: metadata.artist,
                             album: metadata.album,
-                            coverUrl: metadata.coverUrl,
+                            coverBlob: metadata.coverBlob, // Otimização: Salvar blob
                             path: null,
                             isOffline: true,
                         };
@@ -962,16 +994,16 @@
                     jsmediatags.read(file, {
                         onSuccess: async (tag) => {
                             const { title, artist, album, picture } = tag.tags;
-                            let coverUrl = null;
+                            let coverBlob = null;
                             if (picture) {
-                                const base64String = btoa(String.fromCharCode.apply(null, picture.data));
-                                coverUrl = `data:${picture.format};base64,${base64String}`;
+                                // Otimização: Criar um Blob em vez de uma string Base64
+                                coverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
                             }
-                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, album, coverUrl });
+                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, album, coverBlob });
                         },
                         onError: (error) => {
                             console.warn('Erro ao ler metadados:', error);
-                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null });
+                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null });
                         }
                     });
                 });
@@ -987,23 +1019,23 @@
                             onSuccess: async (tag) => {
                                 try {
                                     const { title, artist, album, picture } = tag.tags;
-                                    let coverUrl = null;
+                                    let coverBlob = null;
                                     if (picture) {
-                                        const base64String = btoa(String.fromCharCode(...new Uint8Array(picture.data)));
-                                        coverUrl = `data:${picture.format};base64,${base64String}`;
+                                        // Otimização: Criar um Blob em vez de uma string Base64
+                                        coverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
                                     }
                                     const fileName = url.split('/').pop();
                                     resolve({
                                         title: title || fileName.replace(/\.[^/.]+$/, ""),
                                         artist: artist || "Artista Desconhecido",
                                         album: album,
-                                        coverUrl,
+                                        coverBlob,
                                     });
                                 } catch (error) {
                                     console.error(`Erro ao processar metadados de "${url}":`, error);
                                     const fileName = url.split('/').pop();
                                     resolve({
-                                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
+                                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null
                                     });
                                 }
                             },
@@ -1011,7 +1043,7 @@
                                 console.warn(`jsmediatags não conseguiu ler o arquivo: ${url}`, error);
                                 const fileName = url.split('/').pop();
                                 resolve({
-                                    title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
+                                    title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null
                                 });
                             }
                         });
@@ -1020,7 +1052,7 @@
                    console.error("Erro Crítico ao processar arquivo remoto:", error);
                     const fileName = url.split('/').pop();
                     return {
-                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
+                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null
                     };
                 }
             },
@@ -1142,7 +1174,10 @@
 
                         li.dataset.songId = song.id;
                         const placeholder = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
-                        item.querySelector('.song-cover').src = song.coverUrl || placeholder;
+                        // Otimização: Usa URL.createObjectURL se o blob da capa existir
+                        const coverSrc = song.coverBlob ? URL.createObjectURL(song.coverBlob) : placeholder;
+                        item.querySelector('.song-cover').src = coverSrc;
+                        
                         item.querySelector('.song-title').textContent = song.title;
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
                         if (isPlaylistContext) {
@@ -1173,16 +1208,19 @@
                     entry.dataset.id = playlist.id;
                     item.querySelector('.playlist-name').textContent = playlist.name;
                     item.querySelector('.playlist-song-count').textContent = `${playlist.songIds.length} músicas`;
+
+                    const placeholder = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
+                    let coverSrc = placeholder;
+
                     if (playlist.songIds.length > 0) {
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
-                        if (firstSong && firstSong.coverUrl) {
-                            item.querySelector('.playlist-cover').src = firstSong.coverUrl;
-                        } else {
-                            item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
+                        if (firstSong && firstSong.coverBlob) {
+                            // Otimização: Usa URL.createObjectURL se o blob da capa existir
+                            coverSrc = URL.createObjectURL(firstSong.coverBlob);
                         }
-                    } else {
-                         item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
                     }
+                    item.querySelector('.playlist-cover').src = coverSrc;
+                    
                     fragment.appendChild(item);
                 });
                 this.dom.playlistGrid.appendChild(fragment);
