@@ -655,7 +655,10 @@
                         "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3",
                         "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3",
                         "Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3",
-                        "Musics/I Love You_ I_m Sorry(MP3_160K).mp3"       
+                        "Musics/I Love You_ I_m Sorry(MP3_160K).mp3",
+                       "Musics/if u think i_m pretty(MP3_160K).mp3",
+                       "Musics/Die For You(MP3_160K).mp3",
+                       "Musics/Coming Down(MP3_160K).mp3"
                     ];
 
                     let changesMade = false;
@@ -818,7 +821,7 @@
                     this.audio.currentTime = 0;
                     this.play();
                 } else if (this.state.repeatMode === 'all' || this.state.repeatMode === 'none') {
-                    const isLastInQueue = this.state.currentQueueIndex === this.state.playQueue.length - 1;
+                    const isLastInQueue = this.state.playQueue.length > 0 && this.state.currentQueueIndex === this.state.playQueue.length - 1;
                     if (this.state.repeatMode === 'all' || !isLastInQueue) {
                         this.changeTrack('next');
                     } else {
@@ -1024,15 +1027,9 @@
                     };
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
-                        if (!db.objectStoreNames.contains('songs')) {
-                            db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true });
-                        }
-                         if (!db.objectStoreNames.contains('songData')) {
-                            db.createObjectStore('songData', { keyPath: 'id' });
-                        }
-                        if (!db.objectStoreNames.contains('playlists')) {
-                            db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true });
-                        }
+                        if (!db.objectStoreNames.contains('songs')) { db.createObjectStore('songs', { keyPath: 'id', autoIncrement: true }); }
+                        if (!db.objectStoreNames.contains('songData')) { db.createObjectStore('songData', { keyPath: 'id' }); }
+                        if (!db.objectStoreNames.contains('playlists')) { db.createObjectStore('playlists', { keyPath: 'id', autoIncrement: true }); }
                     };
                 });
             },
@@ -1044,11 +1041,11 @@
                         const songMetadata = { 
                             title: metadata.title,
                             artist: metadata.artist,
+                            album: metadata.album,
                             coverUrl: metadata.coverUrl,
                             path: null,
                             isOffline: true,
                         };
-                        
                         const id = await this.saveSongMetadataToDB(songMetadata, true);
                         await this.saveSongDataToDB(id, file); 
                     }
@@ -1058,69 +1055,72 @@
                 }
             },
             
-            readAudioMetadata(file) {
-                return new Promise((resolve) => {
+            async readAudioMetadata(file) {
+                return new Promise(async (resolve) => {
                     jsmediatags.read(file, {
-                        onSuccess: (tag) => {
-                            const { title, artist, picture } = tag.tags;
+                        onSuccess: async (tag) => {
+                            const { title, artist, album, picture } = tag.tags;
                             let coverUrl = null;
                             if (picture) {
                                 const base64String = btoa(String.fromCharCode.apply(null, picture.data));
                                 coverUrl = `data:${picture.format};base64,${base64String}`;
                             }
-                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, coverUrl });
+                            resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, album, coverUrl });
                         },
                         onError: (error) => {
                             console.warn('Erro ao ler metadados:', error);
-                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", coverUrl: null });
+                            resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null });
                         }
                     });
                 });
             },
             
-            readRemoteAudioMetadata(url) {
-                return fetch(url)
-                    .then(response => {
-                        if (!response.ok) throw new Error(`Erro ao carregar ${url}`);
-                        return response.blob();
-                    })
-                    .then(blob => new Promise(resolve => {
+            async readRemoteAudioMetadata(url) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Erro HTTP ao carregar ${url}: ${response.status}`);
+                    const blob = await response.blob();
+                    return new Promise(async (resolve) => {
                         jsmediatags.read(blob, {
-                            onSuccess: (tag) => {
-                                const { title, artist, picture } = tag.tags;
-                                let coverUrl = null;
-
-                                if (picture) {
-                                    const base64String = btoa(String.fromCharCode(...new Uint8Array(picture.data)));
-                                    coverUrl = `data:${picture.format};base64,${base64String}`;
+                            onSuccess: async (tag) => {
+                                try {
+                                    const { title, artist, album, picture } = tag.tags;
+                                    let coverUrl = null;
+                                    if (picture) {
+                                        const base64String = btoa(String.fromCharCode(...new Uint8Array(picture.data)));
+                                        coverUrl = `data:${picture.format};base64,${base64String}`;
+                                    }
+                                    const fileName = url.split('/').pop();
+                                    resolve({
+                                        title: title || fileName.replace(/\.[^/.]+$/, ""),
+                                        artist: artist || "Artista Desconhecido",
+                                        album: album,
+                                        coverUrl,
+                                    });
+                                } catch (error) {
+                                    console.error(`Erro ao processar metadados de "${url}":`, error);
+                                    const fileName = url.split('/').pop();
+                                    resolve({
+                                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
+                                    });
                                 }
-
-                                const fileName = url.split('/').pop();
-                                resolve({
-                                    title: title || fileName.replace(/\.[^/.]+$/, ""),
-                                    artist: artist || "Artista Desconhecido",
-                                    coverUrl,
-                                });
                             },
-                            onError: () => {
+                            onError: (error) => {
+                                console.warn(`jsmediatags não conseguiu ler o arquivo: ${url}`, error);
                                 const fileName = url.split('/').pop();
                                 resolve({
-                                    title: fileName.replace(/\.[^/.]+$/, ""),
-                                    artist: "Artista Desconhecido",
-                                    coverUrl: null,
+                                    title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
                                 });
                             }
                         });
-                    }))
-                    .catch(error => {
-                        console.error("Erro ao processar arquivo remoto:", error);
-                        const fileName = url.split('/').pop();
-                        return {
-                            title: fileName.replace(/\.[^/.]+$/, ""),
-                            artist: "Artista Desconhecido",
-                            coverUrl: null,
-                        };
                     });
+                } catch (error) {
+                   console.error("Erro Crítico ao processar arquivo remoto:", error);
+                    const fileName = url.split('/').pop();
+                    return {
+                        title: fileName.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverUrl: null
+                    };
+                }
             },
             
             async saveSongMetadataToDB(song, returnId = false) {
@@ -1163,7 +1163,7 @@
                     transaction.onerror = reject;
                 });
             },
-            
+
             async deleteSongFromDB(songId) {
                 await this.deleteSongDataFromDB(songId);
                 return new Promise((resolve, reject) => {
@@ -1225,11 +1225,9 @@
             renderSongList(songsToRender = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 container.innerHTML = '';
                 const hasSongs = songsToRender.length > 0;
-
                 if (container === this.dom.songList) {
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
-
                 if(hasSongs) {
                     const fragment = document.createDocumentFragment();
                     songsToRender.forEach((song) => {
@@ -1241,16 +1239,15 @@
                         const offlineIndicator = item.querySelector('.offline-indicator');
 
                         li.dataset.songId = song.id;
-                        item.querySelector('.song-cover').src = song.coverUrl || 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                        const placeholder = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                        item.querySelector('.song-cover').src = song.coverUrl || placeholder;
                         item.querySelector('.song-title').textContent = song.title;
                         item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
-
                         if (isPlaylistContext) {
                             playlistActionBtnIcon.classList.remove('fa-plus');
                             playlistActionBtnIcon.classList.add('fa-trash-can');
                             playlistActionBtnIcon.parentElement.title = "Remover da playlist";
                         }
-                        
                         if (song.isOffline) {
                             downloadBtnIcon.classList.remove('fa-download');
                             downloadBtnIcon.classList.add('fa-trash-can');
@@ -1259,7 +1256,6 @@
                         } else {
                             downloadBtn.classList.toggle('hidden', !song.path);
                         }
-
                         fragment.appendChild(item);
                     });
                     container.appendChild(fragment);
@@ -1275,7 +1271,6 @@
                     entry.dataset.id = playlist.id;
                     item.querySelector('.playlist-name').textContent = playlist.name;
                     item.querySelector('.playlist-song-count').textContent = `${playlist.songIds.length} músicas`;
-
                     if (playlist.songIds.length > 0) {
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
                         if (firstSong && firstSong.coverUrl) {
@@ -1286,7 +1281,6 @@
                     } else {
                          item.querySelector('.playlist-cover').src = 'https://placehold.co/100x100/101010/1DB954?text=PLAY';
                     }
-
                     fragment.appendChild(item);
                 });
                 this.dom.playlistGrid.appendChild(fragment);
