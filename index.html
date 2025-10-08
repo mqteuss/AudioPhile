@@ -486,7 +486,6 @@
             audio: new Audio(),
             imageObserver: null,
 
-            // ***** INÍCIO DA NOVA FUNÇÃO *****
             createThumbnail(imageBlob, width = 100, height = 100) {
                 return new Promise((resolve, reject) => {
                     const img = new Image();
@@ -498,7 +497,6 @@
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
 
-                        // Lógica para simular 'object-cover' no canvas
                         const sourceWidth = img.naturalWidth;
                         const sourceHeight = img.naturalHeight;
                         const sourceAspectRatio = sourceWidth / sourceHeight;
@@ -508,12 +506,12 @@
                         let x = 0;
                         let y = 0;
 
-                        if (sourceAspectRatio > targetAspectRatio) { // Imagem mais larga que o container
+                        if (sourceAspectRatio > targetAspectRatio) {
                             drawHeight = height;
                             drawWidth = drawHeight * sourceAspectRatio;
                             x = (width - drawWidth) / 2;
                             y = 0;
-                        } else { // Imagem mais alta ou com a mesma proporção
+                        } else {
                             drawWidth = width;
                             drawHeight = drawWidth / sourceAspectRatio;
                             x = 0;
@@ -531,8 +529,8 @@
                                 }
                                 URL.revokeObjectURL(objectURL);
                             },
-                            'image/jpeg', // Formato da miniatura
-                            0.8 // Qualidade (0 a 1)
+                            'image/jpeg',
+                            0.8
                         );
                     };
 
@@ -544,7 +542,6 @@
                     img.src = objectURL;
                 });
             },
-            // ***** FIM DA NOVA FUNÇÃO *****
 
             async init() {
                 this.registerServiceWorker();
@@ -842,7 +839,29 @@
             
             async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
-            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}this.updatePlayerUI(o);this.updatePlayingSongUI(o.id);if("mediaSession"in navigator){navigator.mediaSession.metadata&&navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")&&URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);const i=o.coverBlob?URL.createObjectURL(o.coverBlob):"https://placehold.co/500x500/101010/1DB954?text=Spobrefy";navigator.mediaSession.metadata=new MediaMetadata({title:o.title||"Título Desconhecido",artist:o.artist||"Artista Desconhecido",album:o.album||"Spobrefy",artwork:[{src:i,sizes:"512x512",type:o.coverBlob?.type||"image/jpeg"}]})}t&&this.play()}},
+            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}this.updatePlayerUI(o);this.updatePlayingSongUI(o.id);
+            
+            if ("mediaSession" in navigator) {
+                if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) {
+                    URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
+                }
+                
+                const artworkSrcBlob = o.artworkBlob || o.coverBlob;
+                const artworkUrl = artworkSrcBlob ? URL.createObjectURL(artworkSrcBlob) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
+
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: o.title || "Título Desconhecido",
+                    artist: o.artist || "Artista Desconhecido",
+                    album: o.album || "Spobrefy",
+                    artwork: [{
+                        src: artworkUrl,
+                        sizes: "512x512",
+                        type: artworkSrcBlob?.type || "image/jpeg"
+                    }]
+                });
+            }
+
+            t&&this.play()}},
             play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
@@ -852,7 +871,29 @@
             savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
             async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(console.log(`Restaurando estado: Música ID ${t.songId} no tempo ${this.formatTime(t.currentTime)}`),this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
             seek(e){this.audio.duration&&(this.audio.currentTime=e/100*this.audio.duration,this.dom.progressBar.style.setProperty("--progress-percent",`${e}%`))},
-            updatePlayerUI(e){this.dom.trackTitle.textContent=e.title||"Título Desconhecido",this.dom.trackArtist.textContent=e.artist||"Artista Desconhecido",this.state.currentPlayerCoverUrl&&(URL.revokeObjectURL(this.state.currentPlayerCoverUrl),this.state.currentPlayerCoverUrl=null);const t="https://placehold.co/500x500/101010/1DB954?text=Spobrefy";let s;e.coverBlob?(this.state.currentPlayerCoverUrl=URL.createObjectURL(e.coverBlob),s=this.state.currentPlayerCoverUrl):s=t,this.dom.albumCover.src=s,this.dom.background.style.backgroundImage=`url(${s})`},
+            updatePlayerUI(e) {
+                this.dom.trackTitle.textContent = e.title || "Título Desconhecido";
+                this.dom.trackArtist.textContent = e.artist || "Artista Desconhecido";
+                
+                if (this.state.currentPlayerCoverUrl) {
+                    URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
+                    this.state.currentPlayerCoverUrl = null;
+                }
+
+                const placeholder = "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
+                const highResCover = e.artworkBlob || e.coverBlob;
+                let coverUrl;
+
+                if (highResCover) {
+                    this.state.currentPlayerCoverUrl = URL.createObjectURL(highResCover);
+                    coverUrl = this.state.currentPlayerCoverUrl;
+                } else {
+                    coverUrl = placeholder;
+                }
+                
+                this.dom.albumCover.src = coverUrl;
+                this.dom.background.style.backgroundImage = `url(${coverUrl})`;
+            },
             updateProgress(){const{duration:e,currentTime:t}=this.audio;e&&(this.dom.progressBar.value=t/e*100,this.dom.progressBar.style.setProperty("--progress-percent",`${t/e*100}%`),this.dom.durationEl.textContent=this.formatTime(e)),this.dom.currentTimeEl.textContent=this.formatTime(t),"mediaSession"in navigator&&this.audio.duration&&navigator.mediaSession.setPositionState({duration:this.audio.duration,playbackRate:this.audio.playbackRate,position:this.audio.currentTime})},
             formatTime(e){if(isNaN(e))return"0:00";const t=Math.floor(e/60),s=Math.floor(e%60);return`${t}:${s<10?"0":""}${s}`},
             toggleRepeatMode(){const e=["none","all","one"],t=e.indexOf(this.state.repeatMode);this.state.repeatMode=e[(t+1)%e.length],this.updateRepeatButtonUI()},
@@ -911,7 +952,32 @@
                 }
             },
             async deletePlaylist(e){this.showConfirmationModal("Tem certeza que deseja excluir esta playlist?",async()=>{await this.deletePlaylistFromDB(e),await this.loadPlaylistsFromDB()})},
-            showPlaylistDetails(e){this.state.currentPlaylistId=e;const t=this.state.playlists.find(t=>t.id===e);if(!t)return;this.dom.playlistDetailsTitle.textContent=t.name;const s=this.state.songs.filter(e=>t.songIds.includes(e.id)),o=s.length,i=s.reduce((e,t)=>e+(t.duration||0),0),a=Math.floor(i/60);this.dom.playlistDetailsMeta.textContent=`${o} música${o!==1?"s":""}, aprox. ${a} min`;const n=s[0];n&&n.coverBlob?(this.dom.playlistDetailsCoverImg.src=URL.createObjectURL(n.coverBlob),this.dom.playlistDetailsCoverImg.classList.remove("hidden"),this.dom.playlistDetailsCoverIcon.classList.add("hidden")):(this.dom.playlistDetailsCoverImg.classList.add("hidden"),this.dom.playlistDetailsCoverIcon.classList.remove("hidden")),this.renderSongList(s,this.dom.playlistSongList,!0),this.switchView("playlist-details-view")},
+            showPlaylistDetails(e) {
+                this.state.currentPlaylistId = e;
+                const t = this.state.playlists.find(t => t.id === e);
+                if (!t) return;
+                this.dom.playlistDetailsTitle.textContent = t.name;
+                const s = this.state.songs.filter(e => t.songIds.includes(e.id)),
+                    o = s.length,
+                    i = s.reduce((e, t) => e + (t.duration || 0), 0),
+                    a = Math.floor(i / 60);
+                this.dom.playlistDetailsMeta.textContent = `${o} música${o!==1?"s":""}, aprox. ${a} min`;
+                
+                const n = s[0];
+                const highResCover = n ? (n.artworkBlob || n.coverBlob) : null;
+
+                if (highResCover) {
+                    this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
+                    this.dom.playlistDetailsCoverImg.classList.remove("hidden");
+                    this.dom.playlistDetailsCoverIcon.classList.add("hidden");
+                } else {
+                    this.dom.playlistDetailsCoverImg.classList.add("hidden");
+                    this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
+                }
+                
+                this.renderSongList(s, this.dom.playlistSongList, !0);
+                this.switchView("playlist-details-view");
+            },
             
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -958,28 +1024,29 @@
             async initDB(){return new Promise((e,t)=>{const s=indexedDB.open("SpobrefyDB",4);s.onerror=o=>t("Erro ao abrir o DB"),s.onsuccess=t=>{this.db=t.target.result,e(this.db)},s.onupgradeneeded=e=>{const t=e.target.result;let s;t.objectStoreNames.contains("songs")?s=e.target.transaction.objectStore("songs"):s=t.createObjectStore("songs",{keyPath:"id",autoIncrement:!0}),s.indexNames.contains("title")||s.createIndex("title","title",{unique:!1}),s.indexNames.contains("artist")||s.createIndex("artist","artist",{unique:!1}),t.objectStoreNames.contains("songData")||t.createObjectStore("songData",{keyPath:"id"}),t.objectStoreNames.contains("playlists")||t.createObjectStore("playlists",{keyPath:"id",autoIncrement:!0})}})},
             async addMusicFiles(e){try{for(const t of e){const s=await this.readAudioMetadata(t),o={...s,path:null,isOffline:!0},i=await this.saveSongMetadataToDB(o,!0);await this.saveSongDataToDB(i,t)}await this.loadSongsFromDB()}catch(s){console.error("Erro ao processar os arquivos:",s)}},
             
-            // ***** INÍCIO DA FUNÇÃO MODIFICADA *****
             async readAudioMetadata(e) {
-                return new Promise(async (resolve, reject) => { // Tornamos a promise 'async'
+                return new Promise(async (resolve, reject) => {
                     const s = document.createElement("audio");
                     s.src = URL.createObjectURL(e);
 
                     s.addEventListener("loadedmetadata", () => {
                         URL.revokeObjectURL(s.src);
                         jsmediatags.read(e, {
-                            onSuccess: async (o) => { // E o onSuccess também 'async'
+                            onSuccess: async (o) => {
                                 const { title: i, artist: a, album: n, picture: l } = o.tags;
                                 let originalCoverBlob = null;
                                 let thumbnailBlob = null;
+                                let artworkBlob = null; 
 
                                 if (l) {
                                     originalCoverBlob = new Blob([new Uint8Array(l.data)], { type: l.format });
                                     try {
-                                        // Chama nossa nova função para criar a miniatura
-                                        thumbnailBlob = await this.createThumbnail(originalCoverBlob, 100, 100);
+                                        [thumbnailBlob, artworkBlob] = await Promise.all([
+                                            this.createThumbnail(originalCoverBlob, 100, 100),
+                                            this.createThumbnail(originalCoverBlob, 512, 512)
+                                        ]);
                                     } catch (error) {
-                                        console.error("Erro ao criar miniatura:", error);
-                                        thumbnailBlob = null; // Continua sem miniatura se der erro
+                                        console.error("Erro ao criar capas:", error);
                                     }
                                 }
 
@@ -987,7 +1054,8 @@
                                     title: i || e.name.replace(/\.[^/.]+$/, ""),
                                     artist: a,
                                     album: n,
-                                    coverBlob: thumbnailBlob, // Usamos a miniatura aqui!
+                                    coverBlob: thumbnailBlob,
+                                    artworkBlob: artworkBlob,
                                     duration: s.duration
                                 });
                             },
@@ -995,10 +1063,7 @@
                                 console.warn("Erro ao ler metadados:", o);
                                 resolve({
                                     title: e.name.replace(/\.[^/.]+$/, ""),
-                                    artist: "Artista Desconhecido",
-                                    album: null,
-                                    coverBlob: null,
-                                    duration: s.duration
+                                    artist: "Artista Desconhecido", album: null, coverBlob: null, artworkBlob: null, duration: s.duration
                                 });
                             }
                         });
@@ -1010,7 +1075,6 @@
                     });
                 });
             },
-            // ***** FIM DA FUNÇÃO MODIFICADA *****
 
             async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP ao carregar ${e}: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){console.error("Erro Crítico ao processar arquivo remoto:",o);const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
             async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite"),a=i.objectStore("songs"),n=a.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
