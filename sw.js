@@ -2,6 +2,8 @@
 
 // Define um nome e versão para o nosso cache. Mudar a versão força a atualização do cache.
 const CACHE_NAME = 'spobrefy-cache-v210';
+// NOVO: Define o nome do cache de áudio para referência
+const AUDIO_CACHE_NAME = 'spobrefy-audio-cache-v1';
 
 // Lista de arquivos essenciais do "app shell" para serem cacheados na instalação.
 const urlsToCache = [
@@ -36,13 +38,17 @@ self.addEventListener('install', event => {
 // Evento 'activate': Limpa caches antigos se uma nova versão do SW for ativada.
 self.addEventListener('activate', event => {
   console.log('Service Worker: Ativando...');
+  // ALTERADO: Lista de caches que queremos manter (o cache do app e o cache de áudios).
+  const cacheWhitelist = [CACHE_NAME, AUDIO_CACHE_NAME];
+
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) {
-            console.log('Service Worker: Limpando cache antigo:', cache);
-            return caches.delete(cache);
+        cacheNames.map(cacheName => {
+          // Se o nome do cache NÃO estiver na nossa whitelist, ele será deletado.
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Service Worker: Limpando cache antigo:', cacheName);
+            return caches.delete(cacheName);
           }
         })
       );
@@ -52,34 +58,44 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Evento 'fetch' com a estratégia "Stale-While-Revalidate".
+// Evento 'fetch' com estratégias mistas.
 self.addEventListener('fetch', event => {
   // Ignora requisições que não são GET.
   if (event.request.method !== 'GET') {
     return;
   }
 
+  const url = new URL(event.request.url);
+
+  // ALTERADO: Estratégia "Cache First" para fontes do Google e CDNs, pois raramente mudam.
+  if (url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdnjs.cloudflare.com') {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(cache => {
+        return cache.match(event.request).then(response => {
+          // Retorna do cache se encontrar, senão busca na rede e salva no cache para a próxima vez.
+          const fetchPromise = fetch(event.request).then(networkResponse => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+          return response || fetchPromise;
+        });
+      })
+    );
+    return; // Encerra aqui para não aplicar a outra estratégia.
+  }
+
+  // Estratégia "Stale-While-Revalidate" para o restante (nosso app shell).
   event.respondWith((async () => {
-    // Abre o cache.
     const cache = await caches.open(CACHE_NAME);
-
-    // 1. Tenta encontrar a resposta no cache.
     const cachedResponse = await cache.match(event.request);
-
-    // 2. Em paralelo, busca a resposta na rede.
     const fetchPromise = fetch(event.request).then(networkResponse => {
-      // Se a resposta da rede for bem-sucedida, atualiza o cache.
       if (networkResponse && networkResponse.ok) {
         cache.put(event.request, networkResponse.clone());
       }
       return networkResponse;
     }).catch(err => {
-        // A rede falhou, o que é esperado quando offline.
         console.warn(`Fetch falhou para: ${event.request.url}`, err);
     });
-
-    // 3. Retorna a resposta do cache imediatamente se ela existir.
-    // Se não existir, espera a resposta da rede.
     return cachedResponse || await fetchPromise;
   })());
 });
