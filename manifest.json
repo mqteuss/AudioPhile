@@ -3,6 +3,7 @@
   "short_name": "Spobrefy",
   "description": "Seu player de música offline, moderno e pessoal.",
   "start_url": "/",
+  "scope": "/",  
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
