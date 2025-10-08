@@ -183,7 +183,6 @@
             opacity: 1;
         }
 
-        /* Destaque para música tocando na lista de busca */
         #song-list .song-item.playing .song-title {
             color: #1DB954;
         }
@@ -735,7 +734,6 @@
                 }
             },
 
-            // NOVO: Funções auxiliares para gerenciar a Cache API
             _getAudioCache() {
                 return caches.open(this.CACHE_NAME);
             },
@@ -754,7 +752,6 @@
             async _addSongToCacheFromPath(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
-                // O fetch é necessário para criar um objeto Response que pode ser cacheado.
                 const response = await fetch(key);
                 if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
                 await cache.put(key, response);
@@ -779,7 +776,6 @@
                 const download = async () => {
                     console.log(`📥 Baixando e cacheando "${song.title}"...`);
                     try {
-                        // ALTERADO: Adiciona ao cache em vez de ao IndexedDB
                         if (song.path) {
                             await this._addSongToCacheFromPath(song);
                         } else {
@@ -791,7 +787,7 @@
                         return true;
                     } catch (error) {
                         console.error("Erro no download para o cache:", error);
-                        song.isOffline = false; // Garante que o estado não fique inconsistente
+                        song.isOffline = false; 
                         await this.saveSongMetadataToDB(song);
                         return false;
                     } finally {
@@ -806,7 +802,7 @@
                             await this.saveSongMetadataToDB(song);
                             this.rerenderCurrentList();
                         });
-                    } else { // Permite remoção em massa sem confirmação
+                    } else { 
                         await this._removeSongFromCache(song);
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
@@ -1036,7 +1032,7 @@
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open("SpobrefyDB", 4); // Versão 4 para garantir a limpeza
+                    const request = indexedDB.open("SpobrefyDB", 4);
                     request.onerror = e => reject("Erro ao abrir o DB"),
                     request.onsuccess = e => {
                         this.db = e.target.result;
@@ -1119,7 +1115,75 @@
                     });
                 });
             },
-            async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP ao carregar ${e}: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){console.error("Erro Crítico ao processar arquivo remoto:",o);const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
+
+            async readRemoteAudioMetadata(url) {
+                return new Promise((resolve, reject) => {
+                    jsmediatags.read(url, {
+                        onSuccess: async (tag) => {
+                            const { title, artist, album, picture } = tag.tags;
+                            let originalCoverBlob = null;
+                            let thumbnailBlob = null;
+                            let artworkBlob = null;
+                            if (picture) {
+                                originalCoverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
+                                try {
+                                    [thumbnailBlob, artworkBlob] = await Promise.all([
+                                        this.createThumbnail(originalCoverBlob, 100, 100),
+                                        this.createThumbnail(originalCoverBlob, 512, 512)
+                                    ]);
+                                } catch (error) {
+                                    console.error("Erro ao criar capas:", error);
+                                }
+                            }
+                            
+                            const audio = new Audio(url);
+                            audio.preload = 'metadata';
+                            
+                            const onLoadedMetadata = () => {
+                                audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+                                audio.removeEventListener('error', onError);
+                                resolve({
+                                    title: title || url.split("/").pop().replace(/\.[^/.]+$/, ""),
+                                    artist: artist || "Artista Desconhecido",
+                                    album: album,
+                                    coverBlob: thumbnailBlob,
+                                    artworkBlob: artworkBlob,
+                                    duration: audio.duration
+                                });
+                            };
+
+                            const onError = () => {
+                                audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+                                audio.removeEventListener('error', onError);
+                                resolve({
+                                    title: title || url.split("/").pop().replace(/\.[^/.]+$/, ""),
+                                    artist: artist || "Artista Desconhecido",
+                                    album: album,
+                                    coverBlob: thumbnailBlob,
+                                    artworkBlob: artworkBlob,
+                                    duration: 0
+                                });
+                            };
+                            
+                            audio.addEventListener('loadedmetadata', onLoadedMetadata);
+                            audio.addEventListener('error', onError);
+                        },
+                        onError: (error) => {
+                            console.warn(`Erro ao ler metadados de ${url} com jsmediatags:`, error);
+                            const filename = url.split("/").pop();
+                            resolve({
+                                title: filename.replace(/\.[^/.]+$/, ""),
+                                artist: "Artista Desconhecido",
+                                album: null,
+                                coverBlob: null,
+                                artworkBlob: null,
+                                duration: 0
+                            });
+                        }
+                    });
+                });
+            },
+
             async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite"),a=i.objectStore("songs"),n=a.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
             
             async deleteSongFromDB(songId) {
@@ -1175,6 +1239,5 @@
         App.init();
     });
 </script>
-
 </body>
 </html>
