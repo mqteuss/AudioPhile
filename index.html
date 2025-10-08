@@ -179,7 +179,6 @@
             opacity: 1;
         }
 
-        /* Destaque para música tocando na lista de busca */
         #song-list .song-item.playing .song-title {
             color: #1DB954;
         }
@@ -221,9 +220,9 @@
 
         <div id="search-view" class="view pb-32">
             <h1 class="text-3xl font-bold px-6 md:px-8 pt-6 md:pt-8 mb-4">Buscar</h1>
-
-            <div class="sticky top-0 bg-black/90 backdrop-blur-lg z-10 px-6 md:px-8 py-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
-                <div class="flex items-center gap-3">
+            
+            <div class="sticky top-0 bg-black z-10 px-6 md:px-8 py-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
+            <div class="flex items-center gap-3">
                     <div class="relative flex-grow">
                         <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
                         <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
@@ -272,7 +271,7 @@
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
-                 </div>
+            </div>
             <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
         </div>
     </main>
@@ -348,6 +347,8 @@
              </div>
         </div>
     </div>
+
+
     <template id="song-item-template">
         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
             <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
@@ -453,12 +454,10 @@
                 confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'),
                 confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
                 
-                // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
                 // Notification Modal
                 notificationModal: document.getElementById('notification-modal'),
                 notificationModalText: document.getElementById('notification-modal-text'),
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
-                // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
 
             },
 
@@ -527,7 +526,6 @@
             },
 
             bindEvents() {
-                // Navegação e Player
                 this.dom.navButtons.forEach(btn => btn.dataset.view && btn.addEventListener('click', e => { this.switchView(e.currentTarget.dataset.view); this.animateIcon(e.currentTarget); }));
                 this.dom.playPauseBtn.addEventListener('click', e => { this.togglePlayPause(); this.animateIcon(e.currentTarget); });
                 this.dom.nextBtn.addEventListener('click', e => { this.changeTrack('next'); this.animateIcon(e.currentTarget); });
@@ -535,7 +533,6 @@
                 this.dom.repeatBtn.addEventListener('click', e => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); });
                 this.dom.shuffleBtn.addEventListener('click', e => { this.toggleShuffle(); this.animateIcon(e.currentTarget); });
                 
-                // Áudio e Progresso
                 this.dom.progressBar.addEventListener('input', e => this.seek(e.target.value));
                 this.audio.addEventListener('timeupdate', () => this.updateProgress());
                 this.audio.addEventListener('ended', () => this.handleSongEnd());
@@ -544,12 +541,10 @@
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
                 window.addEventListener('beforeunload', () => this.savePlaybackState());
                 
-                // Adicionar Músicas e Busca
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
 
-                // Modais de Playlist
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.openCreatePlaylistModal());
                 this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.handlePlaylistFormSubmit());
@@ -561,14 +556,12 @@
                     if(listItem) this.addSongToPlaylist(parseInt(listItem.dataset.playlistId));
                 });
 
-                // Modal de Opções da Música
                 this.dom.optionsCancelBtn.addEventListener('click', () => this.showSongOptionsModal(false));
                 this.dom.songOptionsModal.addEventListener('click', e => { if (e.target === this.dom.songOptionsModal) this.showSongOptionsModal(false); });
                 this.dom.optionsAddToPlaylistBtn.addEventListener('click', () => { this.showAddToPlaylistModal(true); this.showSongOptionsModal(false); });
                 this.dom.optionsRemoveFromPlaylistBtn.addEventListener('click', () => { this.removeSongFromPlaylist(); this.showSongOptionsModal(false); });
                 this.dom.optionsDownloadBtn.addEventListener('click', () => { this.toggleSongOfflineStatus(); this.showSongOptionsModal(false); });
 
-                // Confirmation Modal
                 this.dom.confirmationCancelBtn.addEventListener('click', () => this.showConfirmationModal(null, null, false));
                 this.dom.confirmationOkBtn.addEventListener('click', () => {
                     if (typeof this.state.confirmationCallback === 'function') {
@@ -577,12 +570,8 @@
                     this.showConfirmationModal(null, null, false);
                 });
 
-                // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
-                // Notification Modal
                 this.dom.notificationOkBtn.addEventListener('click', () => this.showNotificationModal(null, false));
-                // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
 
-                // Listas
                 this.dom.playlistGrid.addEventListener('click', e => {
                     const entry = e.target.closest('.playlist-item-grid-entry');
                     if (!entry) return;
@@ -607,7 +596,6 @@
                     }
                 });
 
-                // Gestos
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
@@ -809,8 +797,7 @@
             showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
             showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
             showConfirmationModal(e,t,s=!0){s?(this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300))},
-
-            // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
+            
             showNotificationModal(message, show = true) {
                 if (show) {
                     this.dom.notificationModalText.textContent = message;
@@ -824,7 +811,6 @@
                     }, 300);
                 }
             },
-            // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
             
             handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
             openCreatePlaylistModal() {
@@ -869,9 +855,7 @@
                     .filter(song => song && !song.isOffline);
 
                 if (songsToDownload.length === 0) {
-                    // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
                     this.showNotificationModal('Todas as músicas desta playlist já estão disponíveis offline.');
-                    // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
                     return;
                 }
 
