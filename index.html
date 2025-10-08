@@ -243,6 +243,8 @@
                 <ul id="song-list" class="space-y-1 mt-4"></ul>
             </div>
         </div>
+
+
         <div id="playlists-view" class="view p-6 md:p-8 pb-32">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
                <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
@@ -263,21 +265,16 @@
                 </div>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
                 
-                <div class="flex justify-center items-center gap-4 mt-6 mb-2">
-                    <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
-                    <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-8 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
+                <div class="flex justify-center items-center gap-4 my-6">
+                    <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-6 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
+                    <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-6 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
+                    <button id="playlist-download-all-btn" class="border border-zinc-600 text-zinc-300 w-12 h-12 rounded-full hover:bg-zinc-700 transition-colors flex items-center justify-center" title="Baixar todas as músicas da playlist">
+                        <i class="fas fa-download"></i>
+                    </button>
                 </div>
-            </div>
-            
-            <div class="border-t border-zinc-800 mt-6 pt-4">
-                 <button id="playlist-download-all-btn" class="w-full flex items-center justify-center gap-3 text-zinc-300 hover:text-white transition-colors py-2 rounded-lg hover:bg-zinc-800" title="Baixar todas as músicas da playlist">
-                    <i class="fas fa-download text-lg"></i>
-                    <span class="font-semibold">Baixar todas</span>
-                </button>
-            </div>
-            
+                 </div>
             <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
-            </div>
+        </div>
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
@@ -342,7 +339,15 @@
              </div>
         </div>
     </div>
-
+    
+    <div id="notification-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
+             <p id="notification-modal-text" class="text-center mb-6"></p>
+             <div class="flex justify-end">
+                 <button id="notification-ok-btn" class="bg-green-500 text-black px-5 py-2 rounded-full font-semibold transition-colors hover:bg-green-400">OK</button>
+             </div>
+        </div>
+    </div>
     <template id="song-item-template">
         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
             <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
@@ -447,6 +452,14 @@
                 confirmationModalText: document.getElementById('confirmation-modal-text'),
                 confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'),
                 confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
+                
+                // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
+                // Notification Modal
+                notificationModal: document.getElementById('notification-modal'),
+                notificationModalText: document.getElementById('notification-modal-text'),
+                notificationOkBtn: document.getElementById('notification-ok-btn'),
+                // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
+
             },
 
             state: {
@@ -563,6 +576,11 @@
                     }
                     this.showConfirmationModal(null, null, false);
                 });
+
+                // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
+                // Notification Modal
+                this.dom.notificationOkBtn.addEventListener('click', () => this.showNotificationModal(null, false));
+                // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
 
                 // Listas
                 this.dom.playlistGrid.addEventListener('click', e => {
@@ -734,13 +752,12 @@
                 }
             },
 
-            // ***** FUNÇÃO CORRIGIDA *****
             rerenderCurrentList() {
                 const activeView = document.querySelector('.view.active');
                 if (!activeView) return;
                 
                 if (activeView.id === 'search-view') {
-                    this.renderSongList(); // Re-renderiza a lista principal de músicas
+                    this.renderSongList();
                     this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
                 }
                 else if (activeView.id === 'playlist-details-view') {
@@ -792,6 +809,22 @@
             showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
             showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
             showConfirmationModal(e,t,s=!0){s?(this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300))},
+
+            // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
+            showNotificationModal(message, show = true) {
+                if (show) {
+                    this.dom.notificationModalText.textContent = message;
+                    this.dom.notificationModal.classList.remove('opacity-0', 'pointer-events-none');
+                    this.dom.notificationModal.querySelector('.modal-content').classList.remove('scale-95');
+                } else {
+                    this.dom.notificationModal.classList.add('opacity-0');
+                    this.dom.notificationModal.querySelector('.modal-content').classList.add('scale-95');
+                    setTimeout(() => {
+                        this.dom.notificationModal.classList.add('pointer-events-none');
+                    }, 300);
+                }
+            },
+            // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
             
             handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
             openCreatePlaylistModal() {
@@ -836,20 +869,22 @@
                     .filter(song => song && !song.isOffline);
 
                 if (songsToDownload.length === 0) {
-                    alert('Todas as músicas desta playlist já estão disponíveis offline.');
+                    // ***** INÍCIO DAS MUDANÇAS NO JAVASCRIPT *****
+                    this.showNotificationModal('Todas as músicas desta playlist já estão disponíveis offline.');
+                    // ***** FIM DAS MUDANÇAS NO JAVASCRIPT *****
                     return;
                 }
 
                 const btn = this.dom.playlistDownloadAllBtn;
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = `<i class="fas fa-spinner fa-spin text-lg"></i><span class="font-semibold">Baixando...</span>`;
+                const originalIcon = btn.innerHTML;
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
                 btn.disabled = true;
 
                 for (const song of songsToDownload) {
                     await this.toggleSongOfflineStatus(song.id);
                 }
                 
-                btn.innerHTML = originalContent;
+                btn.innerHTML = originalIcon;
                 btn.disabled = false;
                 
                 this.showPlaylistDetails(this.state.currentPlaylistId);
