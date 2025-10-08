@@ -143,6 +143,32 @@
         .modal-overlay { transition: opacity 0.3s ease-in-out; }
         .modal-content { transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 
+        /* Animações para o Toast */
+        @keyframes toast-in {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toast-out {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .toast-in { animation: toast-in 0.4s ease-in-out forwards; }
+        .toast-out { animation: toast-out 0.4s ease-in-out forwards; }
+
         @keyframes nav-icon-bounce {
             0% { transform: scale(1); }
             50% { transform: scale(0.85); }
@@ -352,6 +378,7 @@
              </div>
         </div>
     </div>
+
     <template id="song-item-template">
         <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
             <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
@@ -386,6 +413,8 @@
             </div>
         </div>
     </template>
+
+    <div id="toast-container" class="fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col items-end gap-3"></div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -451,6 +480,8 @@
                 notificationModal: document.getElementById('notification-modal'),
                 notificationModalText: document.getElementById('notification-modal-text'),
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
+                // NOVO
+                toastContainer: document.getElementById('toast-container'),
             },
 
             state: {
@@ -480,6 +511,7 @@
             imageObserver: null,
             CACHE_NAME: 'spobrefy-audio-cache-v1',
 
+            // ... (função createThumbnail) ...
             createThumbnail(imageBlob, width = 100, height = 100) {
                 return new Promise((resolve, reject) => {
                     const img = new Image();
@@ -545,6 +577,7 @@
                 this.switchView('player-view');
             },
 
+            // ... (outras funções init) ...
             registerServiceWorker() {
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js')
@@ -552,7 +585,7 @@
                         .catch(err => console.log(`Service Worker: Erro: ${err}`));
                 }
             },
-
+            
             debounce(func, delay) {
                 return (...args) => {
                     clearTimeout(this.state.debounceTimer);
@@ -634,6 +667,7 @@
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
 
+            // ... (outras funções, como setupImageObserver, setupMediaSession, etc.) ...
             setupImageObserver() {
                 this.imageObserver = new IntersectionObserver((entries, observer) => {
                     entries.forEach(entry => {
@@ -710,7 +744,7 @@
                     }
                 }
             },
-
+            
             async addSongToPlaylist(playlistId) {
                 const playlist = this.state.playlists.find(p => p.id === playlistId);
                 const songId = this.state.songIdForOptions;
@@ -718,6 +752,8 @@
                     playlist.songIds.push(songId);
                     await this.savePlaylistToDB(playlist);
                     await this.loadPlaylistsFromDB();
+                    // ALTERADO: Feedback com Toast
+                    this.showToast(`Adicionado a "${playlist.name}"`, 'success');
                 }
                 this.showAddToPlaylistModal(false);
             },
@@ -731,41 +767,36 @@
                         await this.savePlaylistToDB(playlist);
                         this.showPlaylistDetails(this.state.currentPlaylistId);
                         await this.loadPlaylistsFromDB();
+                        this.showToast('Música removida da playlist.', 'success');
                     });
                 }
             },
-
-            // NOVO: Funções auxiliares para gerenciar a Cache API
+            
+            // ... (Funções da Cache API) ...
             _getAudioCache() {
                 return caches.open(this.CACHE_NAME);
             },
-
             _getCacheKey(song) {
                 return song.path || `local-file://${song.id}`;
             },
-
             async _addSongToCache(song, blob) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
                 const response = new Response(blob);
                 await cache.put(key, response);
             },
-
             async _addSongToCacheFromPath(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
-                // O fetch é necessário para criar um objeto Response que pode ser cacheado.
                 const response = await fetch(key);
                 if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
                 await cache.put(key, response);
             },
-            
             async _removeSongFromCache(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
                 await cache.delete(key);
             },
-            
             async _getSongFromCache(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
@@ -777,21 +808,23 @@
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song) return;
                 const download = async () => {
-                    console.log(`📥 Baixando e cacheando "${song.title}"...`);
+                    this.showToast(`Baixando "${song.title}"...`, 'info', 2000);
                     try {
-                        // ALTERADO: Adiciona ao cache em vez de ao IndexedDB
                         if (song.path) {
                             await this._addSongToCacheFromPath(song);
                         } else {
                             console.warn("Tentativa de baixar música local sem um blob de origem.");
+                            this.showToast('Falha ao baixar música local.', 'error');
                             return false;
                         }
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
+                        this.showToast('Música disponível offline.', 'success');
                         return true;
                     } catch (error) {
                         console.error("Erro no download para o cache:", error);
-                        song.isOffline = false; // Garante que o estado não fique inconsistente
+                        this.showToast('Erro ao baixar música.', 'error');
+                        song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
                         return false;
                     } finally {
@@ -804,9 +837,10 @@
                             await this._removeSongFromCache(song);
                             song.isOffline = false;
                             await this.saveSongMetadataToDB(song);
+                            this.showToast('Música removida do offline.', 'info');
                             this.rerenderCurrentList();
                         });
-                    } else { // Permite remoção em massa sem confirmação
+                    } else {
                         await this._removeSongFromCache(song);
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
@@ -816,6 +850,7 @@
                 }
             },
 
+            // ... (syncWithServerFolder, loadSong, etc.) ...
             rerenderCurrentList() {
                 const activeView = document.querySelector('.view.active');
                 if (!activeView) return;
@@ -847,7 +882,7 @@
                 this.switchView('player-view');
             },
 
-            async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Manchild(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
+            async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
             
             async loadSong(e, t = !1, s = -1) {
@@ -893,7 +928,7 @@
                     t && this.play()
                 }
             },
-
+            
             play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
@@ -929,6 +964,37 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
+            
+            // NOVA FUNÇÃO
+            showToast(message, type = 'info', duration = 3000) {
+                const toast = document.createElement('div');
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-times-circle',
+                    info: 'fa-info-circle',
+                };
+                const colors = {
+                    success: 'bg-green-500',
+                    error: 'bg-red-500',
+                    info: 'bg-zinc-700',
+                };
+                const iconClass = icons[type] || icons['info'];
+                const colorClass = colors[type] || colors['info'];
+                toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colorClass} toast-in`;
+                toast.innerHTML = `
+                    <i class="fas ${iconClass} text-lg"></i>
+                    <span>${message}</span>
+                `;
+                this.dom.toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.remove('toast-in');
+                    toast.classList.add('toast-out');
+                    toast.addEventListener('animationend', () => {
+                        toast.remove();
+                    });
+                }, duration);
+            },
+            
             showPlaylistModal(e){e?(this.dom.createPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.remove("scale-95"),this.dom.playlistNameInput.focus()):(this.dom.createPlaylistModal.classList.add("opacity-0"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.createPlaylistModal.classList.add("pointer-events-none"),this.state.playlistIdToEdit=null},300))},
             showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
             showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
@@ -963,7 +1029,14 @@
                 this.state.playlistIdToEdit = playlistId;
                 this.showPlaylistModal(true);
             },
-            async createPlaylist(){const e=this.dom.playlistNameInput.value.trim();if(!e)return;await this.savePlaylistToDB({name:e,songIds:[]}),this.showPlaylistModal(!1),await this.loadPlaylistsFromDB()},
+            async createPlaylist(){
+                const name = this.dom.playlistNameInput.value.trim();
+                if(!name) return;
+                await this.savePlaylistToDB({name: name, songIds: []});
+                this.showToast('Playlist criada com sucesso!', 'success');
+                this.showPlaylistModal(false);
+                await this.loadPlaylistsFromDB();
+            },
             async renamePlaylist() {
                 const newName = this.dom.playlistNameInput.value.trim();
                 const playlistId = this.state.playlistIdToEdit;
@@ -971,13 +1044,22 @@
                 if (!newName || !playlist) return;
                 playlist.name = newName;
                 await this.savePlaylistToDB(playlist);
+                this.showToast('Playlist renomeada!', 'success');
                 this.showPlaylistModal(false);
                 await this.loadPlaylistsFromDB();
                 if (this.state.currentPlaylistId === playlistId) {
                     this.dom.playlistDetailsTitle.textContent = newName;
                 }
             },
-            async deletePlaylist(e){this.showConfirmationModal("Tem certeza que deseja excluir esta playlist?",async()=>{await this.deletePlaylistFromDB(e),await this.loadPlaylistsFromDB()})},
+            async deletePlaylist(e){
+                const playlist = this.state.playlists.find(p => p.id === e);
+                if(!playlist) return;
+                this.showConfirmationModal(`Tem certeza que deseja excluir a playlist "${playlist.name}"?`,async()=>{
+                    await this.deletePlaylistFromDB(e);
+                    this.showToast('Playlist excluída.', 'info');
+                    await this.loadPlaylistsFromDB();
+                })
+            },
             showPlaylistDetails(e) {
                 this.state.currentPlaylistId = e;
                 const t = this.state.playlists.find(t => t.id === e);
@@ -1008,18 +1090,20 @@
                     .map(id => this.state.songs.find(s => s.id === id))
                     .filter(song => song && !song.isOffline);
                 if (songsToDownload.length === 0) {
-                    this.showNotificationModal('Todas as músicas desta playlist já estão disponíveis offline.');
+                    this.showToast('Todas as músicas já estão offline.', 'info');
                     return;
                 }
                 const btn = this.dom.playlistDownloadAllBtn;
                 const originalIcon = btn.innerHTML;
                 btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
                 btn.disabled = true;
+                this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
                 for (const song of songsToDownload) {
                     await this.toggleSongOfflineStatus(song.id);
                 }
                 btn.innerHTML = originalIcon;
                 btn.disabled = false;
+                this.showToast('Download da playlist concluído!', 'success');
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
             updatePlayingSongUI(playingSongId) {
@@ -1032,7 +1116,8 @@
                     currentSongItem.classList.add('playing');
                 }
             },
-
+            
+            // ... (Funções do IndexedDB) ...
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
@@ -1060,6 +1145,7 @@
             },
 
             async addMusicFiles(e) {
+                this.showToast(`Adicionando ${e.length} músicas...`, 'info');
                 try {
                     for (const t of e) {
                         const s = await this.readAudioMetadata(t);
@@ -1068,8 +1154,10 @@
                         await this._addSongToCache({ id: i }, t);
                     }
                     await this.loadSongsFromDB();
+                    this.showToast('Músicas adicionadas com sucesso!', 'success');
                 } catch (s) {
                     console.error("Erro ao processar os arquivos:", s);
+                    this.showToast('Erro ao adicionar músicas.', 'error');
                 }
             },
             async readAudioMetadata(e) {
