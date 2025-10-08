@@ -10,7 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <link rel="apple-touch-icon" href="icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512x512.png">
@@ -237,7 +237,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="px-6 md:px-8">
                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
                     <i class="fas fa-music text-5xl mb-4"></i>
@@ -268,7 +268,7 @@
                     <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
                 </div>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
-                
+
                 <div class="flex justify-center items-center gap-4 my-6">
                     <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-6 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
                     <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-6 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
@@ -333,7 +333,7 @@
              <button id="options-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
-    
+
     <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <p id="confirmation-modal-text" class="text-center mb-6"></p>
@@ -343,7 +343,7 @@
              </div>
         </div>
     </div>
-    
+
     <div id="notification-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <p id="notification-modal-text" class="text-center mb-6"></p>
@@ -387,7 +387,7 @@
         </div>
     </template>
 
-    <script>
+<script>
     document.addEventListener('DOMContentLoaded', () => {
         const App = {
             dom: {
@@ -414,8 +414,6 @@
                 searchInput: document.getElementById('search-input'),
                 playlistGrid: document.getElementById('playlist-grid'),
                 playlistItemTemplate: document.getElementById('playlist-item-template'),
-                
-                // Modals
                 createPlaylistBtn: document.getElementById('create-playlist-btn'),
                 createPlaylistModal: document.getElementById('create-playlist-modal'),
                 playlistModalTitle: document.getElementById('playlist-modal-title'),
@@ -425,8 +423,6 @@
                 addToPlaylistModal: document.getElementById('add-to-playlist-modal'),
                 playlistSelectionList: document.getElementById('playlist-selection-list'),
                 addToPlaylistCancelBtn: document.getElementById('add-to-playlist-cancel-btn'),
-                
-                // Playlist Details
                 playlistDetailsView: document.getElementById('playlist-details-view'),
                 backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
                 playlistDetailsTitle: document.getElementById('playlist-details-title'),
@@ -439,8 +435,6 @@
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
                 playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
-
-                // Song Options Modal
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -450,18 +444,13 @@
                 optionsRemoveFromPlaylistLi: document.getElementById('options-remove-from-playlist-li'),
                 optionsDownloadBtn: document.getElementById('options-download-btn'),
                 optionsCancelBtn: document.getElementById('options-cancel-btn'),
-
-                // Confirmation Modal
                 confirmationModal: document.getElementById('confirmation-modal'),
                 confirmationModalText: document.getElementById('confirmation-modal-text'),
                 confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'),
                 confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
-                
-                // Notification Modal
                 notificationModal: document.getElementById('notification-modal'),
                 notificationModalText: document.getElementById('notification-modal-text'),
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
-
             },
 
             state: {
@@ -472,7 +461,7 @@
                 isShuffle: false,
                 repeatMode: 'none',
                 currentPlaylistId: null,
-                playQueue: [], 
+                playQueue: [],
                 currentQueueIndex: -1,
                 restoredState: null,
                 touchStartX: 0,
@@ -489,18 +478,17 @@
 
             audio: new Audio(),
             imageObserver: null,
+            CACHE_NAME: 'spobrefy-audio-cache-v1',
 
             createThumbnail(imageBlob, width = 100, height = 100) {
                 return new Promise((resolve, reject) => {
                     const img = new Image();
                     const objectURL = URL.createObjectURL(imageBlob);
-
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
-
                         const sourceWidth = img.naturalWidth;
                         const sourceHeight = img.naturalHeight;
                         const sourceAspectRatio = sourceWidth / sourceHeight;
@@ -509,7 +497,6 @@
                         let drawHeight = height;
                         let x = 0;
                         let y = 0;
-
                         if (sourceAspectRatio > targetAspectRatio) {
                             drawHeight = height;
                             drawWidth = drawHeight * sourceAspectRatio;
@@ -521,9 +508,7 @@
                             x = 0;
                             y = (height - drawHeight) / 2;
                         }
-
                         ctx.drawImage(img, x, y, drawWidth, drawHeight);
-
                         canvas.toBlob(
                             (blob) => {
                                 if (blob) {
@@ -537,12 +522,10 @@
                             0.8
                         );
                     };
-
                     img.onerror = () => {
                         reject(new Error('Falha ao carregar a imagem para criar miniatura.'));
                         URL.revokeObjectURL(objectURL);
                     };
-
                     img.src = objectURL;
                 });
             },
@@ -586,15 +569,12 @@
             },
 
             bindEvents() {
-                // Navegação e Player
                 this.dom.navButtons.forEach(btn => btn.dataset.view && btn.addEventListener('click', e => { this.switchView(e.currentTarget.dataset.view); this.animateIcon(e.currentTarget); }));
                 this.dom.playPauseBtn.addEventListener('click', e => { this.togglePlayPause(); this.animateIcon(e.currentTarget); });
                 this.dom.nextBtn.addEventListener('click', e => { this.changeTrack('next'); this.animateIcon(e.currentTarget); });
                 this.dom.prevBtn.addEventListener('click', e => { this.changeTrack('prev'); this.animateIcon(e.currentTarget); });
                 this.dom.repeatBtn.addEventListener('click', e => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); });
                 this.dom.shuffleBtn.addEventListener('click', e => { this.toggleShuffle(); this.animateIcon(e.currentTarget); });
-                
-                // Áudio e Progresso
                 this.dom.progressBar.addEventListener('input', e => this.seek(e.target.value));
                 this.audio.addEventListener('timeupdate', () => this.updateProgress());
                 this.audio.addEventListener('ended', () => this.handleSongEnd());
@@ -602,13 +582,9 @@
                 this.audio.addEventListener('pause', () => this.savePlaybackState());
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
                 window.addEventListener('beforeunload', () => this.savePlaybackState());
-                
-                // Adicionar Músicas e Busca
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
-
-                // Modais de Playlist
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.openCreatePlaylistModal());
                 this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
                 this.dom.confirmPlaylistBtn.addEventListener('click', () => this.handlePlaylistFormSubmit());
@@ -619,15 +595,11 @@
                     const listItem = e.target.closest('[data-playlist-id]');
                     if(listItem) this.addSongToPlaylist(parseInt(listItem.dataset.playlistId));
                 });
-
-                // Modal de Opções da Música
                 this.dom.optionsCancelBtn.addEventListener('click', () => this.showSongOptionsModal(false));
                 this.dom.songOptionsModal.addEventListener('click', e => { if (e.target === this.dom.songOptionsModal) this.showSongOptionsModal(false); });
                 this.dom.optionsAddToPlaylistBtn.addEventListener('click', () => { this.showAddToPlaylistModal(true); this.showSongOptionsModal(false); });
                 this.dom.optionsRemoveFromPlaylistBtn.addEventListener('click', () => { this.removeSongFromPlaylist(); this.showSongOptionsModal(false); });
                 this.dom.optionsDownloadBtn.addEventListener('click', () => { this.toggleSongOfflineStatus(); this.showSongOptionsModal(false); });
-
-                // Confirmation Modal
                 this.dom.confirmationCancelBtn.addEventListener('click', () => this.showConfirmationModal(null, null, false));
                 this.dom.confirmationOkBtn.addEventListener('click', () => {
                     if (typeof this.state.confirmationCallback === 'function') {
@@ -635,11 +607,7 @@
                     }
                     this.showConfirmationModal(null, null, false);
                 });
-                
-                // Notification Modal
                 this.dom.notificationOkBtn.addEventListener('click', () => this.showNotificationModal(null, false));
-
-                // Listas
                 this.dom.playlistGrid.addEventListener('click', e => {
                     const entry = e.target.closest('.playlist-item-grid-entry');
                     if (!entry) return;
@@ -648,13 +616,11 @@
                     else if (e.target.closest('.edit-playlist-btn')) this.openRenamePlaylistModal(playlistId);
                     else if (e.target.closest('.playlist-clickable-area')) this.showPlaylistDetails(playlistId);
                 });
-
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
                 this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false));
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
-
                 this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -663,13 +629,11 @@
                         this.handleSongListClick(e, songs, true);
                     }
                 });
-
-                // Gestos
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
-            
+
             setupImageObserver() {
                 this.imageObserver = new IntersectionObserver((entries, observer) => {
                     entries.forEach(entry => {
@@ -737,11 +701,10 @@
                     this.state.isPlaylistContextForOptions = isPlaylistContext;
                     this.showSongOptionsModal(true);
                 } else if (event.target.closest('.clickable-area')) {
-                    this.state.playQueue = [...songSourceList]; 
+                    this.state.playQueue = [...songSourceList];
                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
                     this.loadSong(globalIndex, true, queueIndex);
-                    
                     if (isPlaylistContext) {
                         this.switchView('player-view');
                     }
@@ -766,43 +729,87 @@
                     this.showConfirmationModal(`Remover "${this.state.songs.find(s => s.id === songId).title}" da playlist?`, async () => {
                         playlist.songIds = playlist.songIds.filter(id => id !== songId);
                         await this.savePlaylistToDB(playlist);
-                        this.showPlaylistDetails(this.state.currentPlaylistId); 
+                        this.showPlaylistDetails(this.state.currentPlaylistId);
                         await this.loadPlaylistsFromDB();
                     });
                 }
+            },
+
+            // NOVO: Funções auxiliares para gerenciar a Cache API
+            _getAudioCache() {
+                return caches.open(this.CACHE_NAME);
+            },
+
+            _getCacheKey(song) {
+                return song.path || `local-file://${song.id}`;
+            },
+
+            async _addSongToCache(song, blob) {
+                const cache = await this._getAudioCache();
+                const key = this._getCacheKey(song);
+                const response = new Response(blob);
+                await cache.put(key, response);
+            },
+
+            async _addSongToCacheFromPath(song) {
+                const cache = await this._getAudioCache();
+                const key = this._getCacheKey(song);
+                // O fetch é necessário para criar um objeto Response que pode ser cacheado.
+                const response = await fetch(key);
+                if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
+                await cache.put(key, response);
+            },
+            
+            async _removeSongFromCache(song) {
+                const cache = await this._getAudioCache();
+                const key = this._getCacheKey(song);
+                await cache.delete(key);
+            },
+            
+            async _getSongFromCache(song) {
+                const cache = await this._getAudioCache();
+                const key = this._getCacheKey(song);
+                return await cache.match(key);
             },
 
             async toggleSongOfflineStatus(songIdToToggle = null) {
                 const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song) return;
-
                 const download = async () => {
-                    console.log(`📥 Baixando "${song.title}"...`);
+                    console.log(`📥 Baixando e cacheando "${song.title}"...`);
                     try {
-                        const response = await fetch(song.path);
-                        if (!response.ok) throw new Error(`Falha ao baixar: ${response.statusText}`);
-                        const blob = await response.blob();
-                        await this.saveSongDataToDB(song.id, blob);
+                        // ALTERADO: Adiciona ao cache em vez de ao IndexedDB
+                        if (song.path) {
+                            await this._addSongToCacheFromPath(song);
+                        } else {
+                            console.warn("Tentativa de baixar música local sem um blob de origem.");
+                            return false;
+                        }
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
                         return true;
                     } catch (error) {
-                        console.error("Erro no download:", error);
+                        console.error("Erro no download para o cache:", error);
+                        song.isOffline = false; // Garante que o estado não fique inconsistente
+                        await this.saveSongMetadataToDB(song);
                         return false;
                     } finally {
                         if (!songIdToToggle) this.rerenderCurrentList();
                     }
                 };
-                
                 if (song.isOffline) {
                     if (!songIdToToggle) {
                         this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, async () => {
-                            await this.deleteSongDataFromDB(songId);
+                            await this._removeSongFromCache(song);
                             song.isOffline = false;
                             await this.saveSongMetadataToDB(song);
                             this.rerenderCurrentList();
                         });
+                    } else { // Permite remoção em massa sem confirmação
+                        await this._removeSongFromCache(song);
+                        song.isOffline = false;
+                        await this.saveSongMetadataToDB(song);
                     }
                 } else {
                     await download();
@@ -812,7 +819,6 @@
             rerenderCurrentList() {
                 const activeView = document.querySelector('.view.active');
                 if (!activeView) return;
-                
                 if (activeView.id === 'search-view') {
                     this.renderSongList();
                     this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
@@ -840,32 +846,54 @@
                 this.loadSong(globalIndex, true, 0);
                 this.switchView('player-view');
             },
-            
+
             async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Sabrina Carpenter - Manchild (Official Lyric Video)(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
-            async loadSong(e,t=!1,s=-1){if(!(e<0||e>=this.state.songs.length)){this.state.currentObjectUrl&&(URL.revokeObjectURL(this.state.currentObjectUrl),this.state.currentObjectUrl=null),this.state.currentSongIndex=e;const o=this.state.songs[e];this.state.currentQueueIndex=s;try{if(o.isOffline){console.log(`▶️ Tocando offline: ${o.title}`);const i=await this.getSongDataFromDB(o.id);i?(this.state.currentObjectUrl=URL.createObjectURL(i),this.audio.src=this.state.currentObjectUrl):(console.warn("Dado offline não encontrado, fazendo streaming."),this.audio.src=o.path)}else console.log(`▶️ Tocando online (streaming): ${o.title}`),this.audio.src=o.path}catch(l){return void console.error("Erro ao carregar áudio: ",l)}this.updatePlayerUI(o);this.updatePlayingSongUI(o.id);
             
-            if ("mediaSession" in navigator) {
-                if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) {
-                    URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
+            async loadSong(e, t = !1, s = -1) {
+                if (!(e < 0 || e >= this.state.songs.length)) {
+                    this.state.currentObjectUrl && (URL.revokeObjectURL(this.state.currentObjectUrl), this.state.currentObjectUrl = null), this.state.currentSongIndex = e;
+                    const o = this.state.songs[e];
+                    this.state.currentQueueIndex = s;
+                    try {
+                        if (o.isOffline) {
+                            console.log(`▶️ Tocando offline (do cache): ${o.title}`);
+                            const response = await this._getSongFromCache(o);
+                            if (response) {
+                                const dataBlob = await response.blob();
+                                this.state.currentObjectUrl = URL.createObjectURL(dataBlob);
+                                this.audio.src = this.state.currentObjectUrl;
+                            } else {
+                                console.warn("Dado offline não encontrado no cache, fazendo streaming."), this.audio.src = o.path
+                            }
+                        } else console.log(`▶️ Tocando online (streaming): ${o.title}`), this.audio.src = o.path
+                    } catch (l) {
+                        return void console.error("Erro ao carregar áudio: ", l)
+                    }
+                    this.updatePlayerUI(o);
+                    this.updatePlayingSongUI(o.id);
+
+                    if ("mediaSession" in navigator) {
+                        if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) {
+                            URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
+                        }
+                        const artworkSrcBlob = o.artworkBlob || o.coverBlob;
+                        const artworkUrl = artworkSrcBlob ? URL.createObjectURL(artworkSrcBlob) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: o.title || "Título Desconhecido",
+                            artist: o.artist || "Artista Desconhecido",
+                            album: o.album || "Spobrefy",
+                            artwork: [{
+                                src: artworkUrl,
+                                sizes: "512x512",
+                                type: artworkSrcBlob?.type || "image/jpeg"
+                            }]
+                        });
+                    }
+                    t && this.play()
                 }
-                
-                const artworkSrcBlob = o.artworkBlob || o.coverBlob;
-                const artworkUrl = artworkSrcBlob ? URL.createObjectURL(artworkSrcBlob) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
+            },
 
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: o.title || "Título Desconhecido",
-                    artist: o.artist || "Artista Desconhecido",
-                    album: o.album || "Spobrefy",
-                    artwork: [{
-                        src: artworkUrl,
-                        sizes: "512x512",
-                        type: artworkSrcBlob?.type || "image/jpeg"
-                    }]
-                });
-            }
-
-            t&&this.play()}},
             play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
@@ -878,23 +906,19 @@
             updatePlayerUI(e) {
                 this.dom.trackTitle.textContent = e.title || "Título Desconhecido";
                 this.dom.trackArtist.textContent = e.artist || "Artista Desconhecido";
-                
                 if (this.state.currentPlayerCoverUrl) {
                     URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
                     this.state.currentPlayerCoverUrl = null;
                 }
-
                 const placeholder = "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
                 const highResCover = e.artworkBlob || e.coverBlob;
                 let coverUrl;
-
                 if (highResCover) {
                     this.state.currentPlayerCoverUrl = URL.createObjectURL(highResCover);
                     coverUrl = this.state.currentPlayerCoverUrl;
                 } else {
                     coverUrl = placeholder;
                 }
-                
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
@@ -905,7 +929,6 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
-            
             showPlaylistModal(e){e?(this.dom.createPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.remove("scale-95"),this.dom.playlistNameInput.focus()):(this.dom.createPlaylistModal.classList.add("opacity-0"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.createPlaylistModal.classList.add("pointer-events-none"),this.state.playlistIdToEdit=null},300))},
             showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
             showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
@@ -923,7 +946,6 @@
                     }, 300);
                 }
             },
-            
             handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
             openCreatePlaylistModal() {
                 this.dom.playlistModalTitle.textContent = "Criar nova playlist";
@@ -966,10 +988,8 @@
                     i = s.reduce((e, t) => e + (t.duration || 0), 0),
                     a = Math.floor(i / 60);
                 this.dom.playlistDetailsMeta.textContent = `${o} música${o!==1?"s":""}, aprox. ${a} min`;
-                
                 const n = s[0];
                 const highResCover = n ? (n.artworkBlob || n.coverBlob) : null;
-
                 if (highResCover) {
                     this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
                     this.dom.playlistDetailsCoverImg.classList.remove("hidden");
@@ -978,61 +998,84 @@
                     this.dom.playlistDetailsCoverImg.classList.add("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
                 }
-                
                 this.renderSongList(s, this.dom.playlistSongList, !0);
                 this.switchView("playlist-details-view");
             },
-            
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
-
                 const songsToDownload = playlist.songIds
                     .map(id => this.state.songs.find(s => s.id === id))
                     .filter(song => song && !song.isOffline);
-
                 if (songsToDownload.length === 0) {
                     this.showNotificationModal('Todas as músicas desta playlist já estão disponíveis offline.');
                     return;
                 }
-
                 const btn = this.dom.playlistDownloadAllBtn;
                 const originalIcon = btn.innerHTML;
                 btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
                 btn.disabled = true;
-
                 for (const song of songsToDownload) {
                     await this.toggleSongOfflineStatus(song.id);
                 }
-                
                 btn.innerHTML = originalIcon;
                 btn.disabled = false;
-                
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
-            
             updatePlayingSongUI(playingSongId) {
                 this.dom.songList.querySelectorAll('.song-item').forEach(item => {
                     item.classList.remove('playing');
                 });
-
                 if (playingSongId === null || playingSongId === undefined) return;
-
                 const currentSongItem = this.dom.songList.querySelector(`.song-item[data-song-id="${playingSongId}"]`);
                 if (currentSongItem) {
                     currentSongItem.classList.add('playing');
                 }
             },
-            
-            db:null,
-            async initDB(){return new Promise((e,t)=>{const s=indexedDB.open("SpobrefyDB",4);s.onerror=o=>t("Erro ao abrir o DB"),s.onsuccess=t=>{this.db=t.target.result,e(this.db)},s.onupgradeneeded=e=>{const t=e.target.result;let s;t.objectStoreNames.contains("songs")?s=e.target.transaction.objectStore("songs"):s=t.createObjectStore("songs",{keyPath:"id",autoIncrement:!0}),s.indexNames.contains("title")||s.createIndex("title","title",{unique:!1}),s.indexNames.contains("artist")||s.createIndex("artist","artist",{unique:!1}),t.objectStoreNames.contains("songData")||t.createObjectStore("songData",{keyPath:"id"}),t.objectStoreNames.contains("playlists")||t.createObjectStore("playlists",{keyPath:"id",autoIncrement:!0})}})},
-            async addMusicFiles(e){try{for(const t of e){const s=await this.readAudioMetadata(t),o={...s,path:null,isOffline:!0},i=await this.saveSongMetadataToDB(o,!0);await this.saveSongDataToDB(i,t)}await this.loadSongsFromDB()}catch(s){console.error("Erro ao processar os arquivos:",s)}},
-            
+
+            db: null,
+            async initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open("SpobrefyDB", 4); // Versão 4 para garantir a limpeza
+                    request.onerror = e => reject("Erro ao abrir o DB"),
+                    request.onsuccess = e => {
+                        this.db = e.target.result;
+                        resolve(this.db);
+                    };
+                    request.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains("songs")) {
+                            const songsStore = db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
+                            songsStore.createIndex("title", "title", { unique: false });
+                            songsStore.createIndex("artist", "artist", { unique: false });
+                        }
+                        if (db.objectStoreNames.contains("songData")) {
+                             db.deleteObjectStore("songData");
+                        }
+                        if (!db.objectStoreNames.contains("playlists")) {
+                            db.createObjectStore("playlists", { keyPath: "id", autoIncrement: true });
+                        }
+                    };
+                });
+            },
+
+            async addMusicFiles(e) {
+                try {
+                    for (const t of e) {
+                        const s = await this.readAudioMetadata(t);
+                        const o = { ...s, path: null, isOffline: !0 };
+                        const i = await this.saveSongMetadataToDB(o, !0);
+                        await this._addSongToCache({ id: i }, t);
+                    }
+                    await this.loadSongsFromDB();
+                } catch (s) {
+                    console.error("Erro ao processar os arquivos:", s);
+                }
+            },
             async readAudioMetadata(e) {
                 return new Promise(async (resolve, reject) => {
                     const s = document.createElement("audio");
                     s.src = URL.createObjectURL(e);
-
                     s.addEventListener("loadedmetadata", () => {
                         URL.revokeObjectURL(s.src);
                         jsmediatags.read(e, {
@@ -1040,8 +1083,7 @@
                                 const { title: i, artist: a, album: n, picture: l } = o.tags;
                                 let originalCoverBlob = null;
                                 let thumbnailBlob = null;
-                                let artworkBlob = null; 
-
+                                let artworkBlob = null;
                                 if (l) {
                                     originalCoverBlob = new Blob([new Uint8Array(l.data)], { type: l.format });
                                     try {
@@ -1053,7 +1095,6 @@
                                         console.error("Erro ao criar capas:", error);
                                     }
                                 }
-
                                 resolve({
                                     title: i || e.name.replace(/\.[^/.]+$/, ""),
                                     artist: a,
@@ -1072,25 +1113,33 @@
                             }
                         });
                     });
-
                     s.addEventListener('error', (err) => {
                         URL.revokeObjectURL(s.src);
                         reject(new Error('Erro ao carregar o arquivo de áudio para metadados.'));
                     });
                 });
             },
-
             async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP ao carregar ${e}: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){console.error("Erro Crítico ao processar arquivo remoto:",o);const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
             async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite"),a=i.objectStore("songs"),n=a.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
-            async saveSongDataToDB(e,t){return new Promise((s,o)=>{const i=this.db.transaction(["songData"],"readwrite"),a=i.objectStore("songData");a.put({id:e,data:t}),i.oncomplete=s,i.onerror=o})},
-            async getSongDataFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["songData"],"readonly"),i=o.objectStore("songData"),a=i.get(e);a.onsuccess=e=>t(e.target.result?.data),a.onerror=s})},
-            async deleteSongDataFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["songData"],"readwrite"),i=o.objectStore("songData");i.delete(e),o.oncomplete=t,o.onerror=s})},
-            async deleteSongFromDB(e){return await this.deleteSongDataFromDB(e),new Promise((t,s)=>{const o=this.db.transaction(["songs"],"readwrite"),i=o.objectStore("songs");i.delete(e),o.oncomplete=t,o.onerror=s})},
+            
+            async deleteSongFromDB(songId) {
+                const songToDelete = this.state.songs.find(s => s.id === songId);
+                if (songToDelete && songToDelete.isOffline) {
+                    await this._removeSongFromCache(songToDelete);
+                }
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(["songs"], "readwrite");
+                    const store = transaction.objectStore("songs");
+                    store.delete(songId);
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = reject;
+                });
+            },
+
             async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result;this.renderSongList();this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);e(this.state.songs)},i.onerror=t})},
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
-            
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})()},
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
@@ -1106,11 +1155,9 @@
                     const button = document.createElement('button');
                     button.className = 'w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left';
                     button.dataset.playlistId = p.id;
-
                     const name = document.createElement('span');
                     name.textContent = p.name;
                     button.appendChild(name);
-
                     const songIsInPlaylist = p.songIds.includes(songId);
                     if (songIsInPlaylist) {
                         const check = document.createElement('i');
@@ -1127,6 +1174,7 @@
 
         App.init();
     });
-    </script>
-    </body>
+</script>
+
+</body>
 </html>
