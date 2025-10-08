@@ -895,7 +895,23 @@
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
             changeTrack(e){const t=this.state.playQueue.length>0?this.state.playQueue:this.state.songs;if(t.length!==0){let s;const o=this.state.currentQueueIndex;if(this.state.isShuffle)do{s=Math.floor(Math.random()*t.length)}while(t.length>1&&s===o);else s=e==="next"?(o+1)%t.length:(o-1+t.length)%t.length;const i=t[s],a=this.state.songs.findIndex(e=>e.id===i.id);this.loadSong(a,!0,s)}},
             handleSongEnd(){if("one"===this.state.repeatMode)this.audio.currentTime=0,this.play();else if("all"===this.state.repeatMode||"none"===this.state.repeatMode){const e=this.state.playQueue.length>0&&this.state.currentQueueIndex===this.state.playQueue.length-1;"all"===this.state.repeatMode||!e?this.changeTrack("next"):(this.pause(),this.audio.currentTime=0)}},
-            handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
+            
+            handleMetadataLoaded(){
+                const song = this.state.songs[this.state.currentSongIndex];
+                // Se a música não tiver duração salva no DB, pega a duração real e salva.
+                if (song && !song.duration) {
+                    song.duration = this.audio.duration;
+                    this.saveSongMetadataToDB(song);
+                }
+                this.updateProgress();
+                // Lógica de restauração de estado
+                if (this.state.restoredState && song?.id === this.state.restoredState.songId) {
+                    this.audio.currentTime = this.state.restoredState.currentTime;
+                    this.updateProgress();
+                    this.state.restoredState = null;
+                }
+            },
+
             savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
             async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(console.log(`Restaurando estado: Música ID ${t.songId} no tempo ${this.formatTime(t.currentTime)}`),this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
             seek(e){this.audio.duration&&(this.audio.currentTime=e/100*this.audio.duration,this.dom.progressBar.style.setProperty("--progress-percent",`${e}%`))},
@@ -1117,7 +1133,7 @@
             },
 
             async readRemoteAudioMetadata(url) {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     jsmediatags.read(url, {
                         onSuccess: async (tag) => {
                             const { title, artist, album, picture } = tag.tags;
@@ -1135,41 +1151,17 @@
                                     console.error("Erro ao criar capas:", error);
                                 }
                             }
-                            
-                            const audio = new Audio(url);
-                            audio.preload = 'metadata';
-                            
-                            const onLoadedMetadata = () => {
-                                audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-                                audio.removeEventListener('error', onError);
-                                resolve({
-                                    title: title || url.split("/").pop().replace(/\.[^/.]+$/, ""),
-                                    artist: artist || "Artista Desconhecido",
-                                    album: album,
-                                    coverBlob: thumbnailBlob,
-                                    artworkBlob: artworkBlob,
-                                    duration: audio.duration
-                                });
-                            };
-
-                            const onError = () => {
-                                audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-                                audio.removeEventListener('error', onError);
-                                resolve({
-                                    title: title || url.split("/").pop().replace(/\.[^/.]+$/, ""),
-                                    artist: artist || "Artista Desconhecido",
-                                    album: album,
-                                    coverBlob: thumbnailBlob,
-                                    artworkBlob: artworkBlob,
-                                    duration: 0
-                                });
-                            };
-                            
-                            audio.addEventListener('loadedmetadata', onLoadedMetadata);
-                            audio.addEventListener('error', onError);
+                            resolve({
+                                title: title || url.split("/").pop().replace(/\.[^/.]+$/, ""),
+                                artist: artist || "Artista Desconhecido",
+                                album: album,
+                                coverBlob: thumbnailBlob,
+                                artworkBlob: artworkBlob,
+                                duration: 0 // A duração será pega depois, ao tocar
+                            });
                         },
                         onError: (error) => {
-                            console.warn(`Erro ao ler metadados de ${url} com jsmediatags:`, error);
+                            console.warn(`Erro ao ler metadados de ${url}:`, error);
                             const filename = url.split("/").pop();
                             resolve({
                                 title: filename.replace(/\.[^/.]+$/, ""),
@@ -1239,5 +1231,6 @@
         App.init();
     });
 </script>
+
 </body>
 </html>
