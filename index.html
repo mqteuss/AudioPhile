@@ -21,8 +21,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <style>
+        /* --- GERAL E LAYOUT --- */
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -40,7 +42,23 @@
             transition: background-image 0.7s ease-in-out;
             z-index: -1;
         }
+        
+        /* --- VIEWS E TRANSIÇÕES --- */
+        .view {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        .view:not(.active) {
+            opacity: 0;
+            transform: scale(0.98);
+            pointer-events: none;
+        }
 
+        /* --- PLAYER E BARRA DE PROGRESSO --- */
         #progress-bar {
             -webkit-appearance: none;
             appearance: none;
@@ -51,7 +69,6 @@
             height: 18px; 
             background: transparent;
         }
-
         #progress-bar::-webkit-slider-runnable-track {
             height: 4px;
             background: linear-gradient(to right, #1DB954 var(--progress-percent, 0%), rgba(255, 255, 255, 0.2) var(--progress-percent, 0%));
@@ -64,7 +81,6 @@
             border-radius: 15px;
             transition: height 0.2s ease-in-out;
         }
-
         #progress-bar::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
@@ -86,7 +102,6 @@
             transition: transform 0.2s ease-in-out, background 0.2s ease-in-out;
             transform: scale(0);
         }
-
         .progress-container:hover #progress-bar::-webkit-slider-runnable-track,
         .progress-container:hover #progress-bar::-moz-range-track {
             height: 6px;
@@ -98,28 +113,12 @@
          .progress-container:hover #progress-bar::-webkit-slider-thumb {
             margin-top: -5px; 
         }
-
         #progress-bar:active::-webkit-slider-thumb,
         #progress-bar:focus::-webkit-slider-thumb,
         #progress-bar:active::-moz-range-thumb,
         #progress-bar:focus::-moz-range-thumb {
              background: #1DB954;
         }
-
-        .view {
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-        .view:not(.active) {
-            opacity: 0;
-            transform: scale(0.98);
-            pointer-events: none;
-        }
-
         .repeat-mode-one::after {
             content: '1';
             position: absolute;
@@ -135,47 +134,7 @@
             text-align: center;
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
-
-        .modal-overlay { transition: opacity 0.3s ease-in-out; }
-        .modal-content { transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
-
-        /* Animações para o Toast */
-        @keyframes toast-in {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes toast-out {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
-
-        .toast-in { animation: toast-in 0.4s ease-in-out forwards; }
-        .toast-out { animation: toast-out 0.4s ease-in-out forwards; }
-
-        @keyframes nav-icon-bounce {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.85); }
-            100% { transform: scale(1); }
-        }
-        .nav-icon-bounce { animation: nav-icon-bounce 0.3s ease-in-out; }
-
+        /* --- LISTAS DE MÚSICAS E PLAYLISTS --- */
         #playlist-song-list {
             counter-reset: song-counter;
         }
@@ -208,17 +167,44 @@
         #playlist-song-list .song-item .clickable-area:hover .song-number-container {
             opacity: 1;
         }
-
-        /* Destaque para música tocando na lista de busca */
-        #song-list .song-item.playing .song-title {
+        #song-list .song-item.playing .song-title,
+        #playlist-song-list .song-item.playing .song-title {
             color: #1DB954;
         }
+
+        /* --- MODAIS E NOTIFICAÇÕES (TOAST) --- */
+        .modal-overlay { transition: opacity 0.3s ease-in-out; }
+        .modal-content { transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+
+        .toast-in { animation: toast-in 0.4s ease-in-out forwards; }
+        .toast-out { animation: toast-out 0.4s ease-in-out forwards; }
+
+        /* --- ANIMAÇÕES --- */
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        @keyframes nav-icon-bounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.85); }
+            100% { transform: scale(1); }
+        }
+        .nav-icon-bounce { animation: nav-icon-bounce 0.3s ease-in-out; }
+        
+        /* --- BARRA DE ROLAGEM --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
 </head>
 <body class="bg-black antialiased overflow-hidden" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
 
     <div id="app-background"></div>
-
     <input type="file" id="music-folder-input" webkitdirectory directory multiple class="hidden">
 
     <main id="app-content" class="h-screen w-screen relative">
@@ -251,8 +237,7 @@
 
         <div id="search-view" class="view pb-20">
             <h1 class="text-3xl font-bold px-6 md:px-8 pt-6 md:pt-8 mb-4">Buscar</h1>
-
-            <div class="sticky top-0 z-10 px-6 md:px-8 py-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
+            <div class="sticky top-0 z-10 px-6 md:px-8 py-3 bg-black/80 backdrop-blur-sm" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
                 <div class="flex items-center gap-3">
                     <div class="relative flex-grow">
                         <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -262,8 +247,16 @@
                         <i class="fas fa-folder-plus text-xl"></i>
                     </button>
                 </div>
+                <div class="flex items-center gap-3 mt-3">
+                    <div class="relative flex-grow">
+                        <input type="text" id="youtube-url-input" placeholder="Cole um link do YouTube aqui" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <i class="fab fa-youtube absolute left-4 top-1/2 -translate-y-1/2 text-red-500"></i>
+                    </div>
+                    <button id="play-youtube-btn" title="Tocar do YouTube" class="flex-shrink-0 text-white bg-red-600 hover:bg-red-500 transition-colors w-10 h-10 flex items-center justify-center rounded-lg">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
             </div>
-
             <div class="px-6 md:px-8">
                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
                     <i class="fas fa-music text-5xl mb-4"></i>
@@ -273,7 +266,6 @@
                 <ul id="song-list" class="space-y-1 mt-4"></ul>
             </div>
         </div>
-
 
         <div id="playlists-view" class="view p-6 md:p-8 pb-20">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
@@ -294,7 +286,6 @@
                     <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
                 </div>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
-
                 <div class="flex justify-center items-center gap-4 my-6">
                     <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-6 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
                     <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-6 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
@@ -302,30 +293,28 @@
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
-                 </div>
+            </div>
             <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
         </div>
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
-        <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
-            <i class="fas fa-search text-xl"></i>
-            <span class="text-xs">Buscar</span>
-        </button>
-        <button data-view="player-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-green-500 transition-colors">
-            <i class="fas fa-circle-play text-xl"></i>
-            <span class="text-xs">Player</span>
-        </button>
-        <button data-view="playlists-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
-            <i class="fas fa-bars-staggered text-xl"></i>
-            <span class="text-xs">Playlists</span>
-        </button>
-        <button id="create-playlist-btn" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
-            <i class="fas fa-plus text-xl"></i>
-            <span class="text-xs">Criar</span>
-        </button>
+        <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-search text-xl"></i><span class="text-xs">Buscar</span></button>
+        <button data-view="player-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-green-500 transition-colors"><i class="fas fa-circle-play text-xl"></i><span class="text-xs">Player</span></button>
+        <button data-view="playlists-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-bars-staggered text-xl"></i><span class="text-xs">Playlists</span></button>
+        <button id="create-playlist-btn" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-plus text-xl"></i><span class="text-xs">Criar</span></button>
     </nav>
 
+    <div id="youtube-player-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
+        <div class="modal-content w-full max-w-lg bg-zinc-800 rounded-xl p-4 shadow-2xl transform scale-95">
+             <div class="aspect-video mb-4 bg-black rounded-lg">
+                <div id="youtube-player-container"></div>
+             </div>
+             <div class="flex justify-end gap-3">
+                 <button id="close-youtube-modal-btn" class="px-5 py-2 rounded-full font-semibold transition-colors bg-zinc-700 hover:bg-zinc-600">Fechar</button>
+             </div>
+        </div>
+    </div>
     <div id="create-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <h2 id="playlist-modal-title" class="text-xl font-bold text-center mb-4">Criar nova playlist</h2>
@@ -336,7 +325,6 @@
              </div>
         </div>
     </div>
-
     <div id="add-to-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-end sm:items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-2 shadow-2xl transform translate-y-full sm:translate-y-0 sm:scale-95">
              <h2 class="text-xl font-bold text-center p-4">Adicionar à playlist</h2>
@@ -344,7 +332,6 @@
              <button id="add-to-playlist-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
-
     <div id="song-options-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-end sm:items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-2 shadow-2xl transform translate-y-full sm:translate-y-0 sm:scale-95">
             <div class="p-4 border-b border-zinc-700">
@@ -359,22 +346,12 @@
              <button id="options-cancel-btn" class="w-full p-4 mt-2 font-semibold hover:bg-zinc-700 rounded-lg">Cancelar</button>
         </div>
     </div>
-
     <div id="confirmation-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
              <p id="confirmation-modal-text" class="text-center mb-6"></p>
              <div class="flex justify-end gap-3">
                  <button id="confirmation-cancel-btn" class="px-5 py-2 rounded-full font-semibold transition-colors hover:bg-zinc-700">Cancelar</button>
                  <button id="confirmation-ok-btn" class="bg-red-500 text-white px-5 py-2 rounded-full font-semibold transition-colors hover:bg-red-400">OK</button>
-             </div>
-        </div>
-    </div>
-
-    <div id="notification-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
-        <div class="modal-content w-full max-w-sm bg-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95">
-             <p id="notification-modal-text" class="text-center mb-6"></p>
-             <div class="flex justify-end">
-                 <button id="notification-ok-btn" class="bg-green-500 text-black px-5 py-2 rounded-full font-semibold transition-colors hover:bg-green-400">OK</button>
              </div>
         </div>
     </div>
@@ -397,7 +374,6 @@
             </button>
         </li>
     </template>
-
     <template id="playlist-item-template">
         <div class="playlist-item-grid-entry group flex items-center justify-between gap-4 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/80 transition-colors">
             <div class="playlist-clickable-area flex-grow flex items-center gap-4 cursor-pointer">
@@ -416,850 +392,261 @@
 
     <div id="toast-container" class="fixed bottom-20 sm:bottom-4 right-4 z-50 flex flex-col items-end gap-3"></div>
 
-<script>
+    <script>
     document.addEventListener('DOMContentLoaded', () => {
         const App = {
-            dom: {
-                appContent: document.getElementById('app-content'),
-                background: document.getElementById('app-background'),
-                albumCover: document.getElementById('album-cover'),
-                trackTitle: document.getElementById('track-title'),
-                trackArtist: document.getElementById('track-artist'),
-                progressBar: document.getElementById('progress-bar'),
-                currentTimeEl: document.getElementById('current-time'),
-                durationEl: document.getElementById('duration'),
-                playPauseBtn: document.getElementById('play-pause-btn'),
-                prevBtn: document.getElementById('prev-btn'),
-                nextBtn: document.getElementById('next-btn'),
-                shuffleBtn: document.getElementById('shuffle-btn'),
-                repeatBtn: document.getElementById('repeat-btn'),
-                navButtons: document.querySelectorAll('.nav-btn'),
-                views: document.querySelectorAll('.view'),
-                addMusicBtn: document.getElementById('add-music-btn'),
-                musicFolderInput: document.getElementById('music-folder-input'),
-                songList: document.getElementById('song-list'),
-                libraryEmptyState: document.getElementById('library-empty-state'),
-                songItemTemplate: document.getElementById('song-item-template'),
-                searchInput: document.getElementById('search-input'),
-                playlistGrid: document.getElementById('playlist-grid'),
-                playlistItemTemplate: document.getElementById('playlist-item-template'),
-                createPlaylistBtn: document.getElementById('create-playlist-btn'),
-                createPlaylistModal: document.getElementById('create-playlist-modal'),
-                playlistModalTitle: document.getElementById('playlist-modal-title'),
-                cancelPlaylistBtn: document.getElementById('cancel-playlist-btn'),
-                confirmPlaylistBtn: document.getElementById('confirm-playlist-btn'),
-                playlistNameInput: document.getElementById('playlist-name-input'),
-                addToPlaylistModal: document.getElementById('add-to-playlist-modal'),
-                playlistSelectionList: document.getElementById('playlist-selection-list'),
-                addToPlaylistCancelBtn: document.getElementById('add-to-playlist-cancel-btn'),
-                playlistDetailsView: document.getElementById('playlist-details-view'),
-                backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'),
-                playlistDetailsTitle: document.getElementById('playlist-details-title'),
-                editPlaylistTitleBtn: document.getElementById('edit-playlist-title-btn'),
-                playlistDetailsMeta: document.getElementById('playlist-details-meta'),
-                playlistDetailsCover: document.getElementById('playlist-details-cover'),
-                playlistDetailsCoverImg: document.getElementById('playlist-details-cover-img'),
-                playlistDetailsCoverIcon: document.getElementById('playlist-details-cover-icon'),
-                playlistSongList: document.getElementById('playlist-song-list'),
-                playlistPlayBtn: document.getElementById('playlist-play-btn'),
-                playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
-                playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
-                songOptionsModal: document.getElementById('song-options-modal'),
-                optionsModalTitle: document.getElementById('options-modal-title'),
-                optionsModalArtist: document.getElementById('options-modal-artist'),
-                optionsAddToPlaylistBtn: document.getElementById('options-add-to-playlist-btn'),
-                optionsAddToPlaylistLi: document.getElementById('options-add-to-playlist-li'),
-                optionsRemoveFromPlaylistBtn: document.getElementById('options-remove-from-playlist-btn'),
-                optionsRemoveFromPlaylistLi: document.getElementById('options-remove-from-playlist-li'),
-                optionsDownloadBtn: document.getElementById('options-download-btn'),
-                optionsCancelBtn: document.getElementById('options-cancel-btn'),
-                confirmationModal: document.getElementById('confirmation-modal'),
-                confirmationModalText: document.getElementById('confirmation-modal-text'),
-                confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'),
-                confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
-                notificationModal: document.getElementById('notification-modal'),
-                notificationModalText: document.getElementById('notification-modal-text'),
-                notificationOkBtn: document.getElementById('notification-ok-btn'),
-                // NOVO
-                toastContainer: document.getElementById('toast-container'),
-            },
-
+            // --- 1. ESTADO DA APLICAÇÃO ---
             state: {
-                songs: [],
-                playlists: [],
-                currentSongIndex: -1,
-                isPlaying: false,
-                isShuffle: false,
-                repeatMode: 'none',
-                currentPlaylistId: null,
-                playQueue: [],
-                currentQueueIndex: -1,
-                restoredState: null,
-                touchStartX: 0,
-                touchEndX: 0,
-                viewOrder: ['search-view', 'player-view', 'playlists-view'],
-                currentObjectUrl: null,
-                currentPlayerCoverUrl: null,
-                debounceTimer: null,
-                songIdForOptions: null,
-                isPlaylistContextForOptions: false,
-                confirmationCallback: null,
-                playlistIdToEdit: null,
+                songs: [], playlists: [], currentSongIndex: -1, isPlaying: false, isShuffle: false, repeatMode: 'none', currentPlaylistId: null, playQueue: [],
+                currentQueueIndex: -1, restoredState: null, touchStartX: 0, touchEndX: 0, viewOrder: ['search-view', 'player-view', 'playlists-view'],
+                currentObjectUrl: null, currentPlayerCoverUrl: null, debounceTimer: null, songIdForOptions: null, isPlaylistContextForOptions: false,
+                confirmationCallback: null, playlistIdToEdit: null,
             },
 
-            audio: new Audio(),
-            imageObserver: null,
-            CACHE_NAME: 'spobrefy-audio-cache-v1',
-
-            // ... (função createThumbnail) ...
-            createThumbnail(imageBlob, width = 100, height = 100) {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    const objectURL = URL.createObjectURL(imageBlob);
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        const sourceWidth = img.naturalWidth;
-                        const sourceHeight = img.naturalHeight;
-                        const sourceAspectRatio = sourceWidth / sourceHeight;
-                        const targetAspectRatio = width / height;
-                        let drawWidth = width;
-                        let drawHeight = height;
-                        let x = 0;
-                        let y = 0;
-                        if (sourceAspectRatio > targetAspectRatio) {
-                            drawHeight = height;
-                            drawWidth = drawHeight * sourceAspectRatio;
-                            x = (width - drawWidth) / 2;
-                            y = 0;
-                        } else {
-                            drawWidth = width;
-                            drawHeight = drawWidth / sourceAspectRatio;
-                            x = 0;
-                            y = (height - drawHeight) / 2;
-                        }
-                        ctx.drawImage(img, x, y, drawWidth, drawHeight);
-                        canvas.toBlob(
-                            (blob) => {
-                                if (blob) {
-                                    resolve(blob);
-                                } else {
-                                    reject(new Error('Falha ao criar o blob da miniatura.'));
-                                }
-                                URL.revokeObjectURL(objectURL);
-                            },
-                            'image/jpeg',
-                            0.8
-                        );
-                    };
-                    img.onerror = () => {
-                        reject(new Error('Falha ao carregar a imagem para criar miniatura.'));
-                        URL.revokeObjectURL(objectURL);
-                    };
-                    img.src = objectURL;
-                });
+            // --- 2. ELEMENTOS DO DOM ---
+            dom: {
+                appContent: document.getElementById('app-content'), background: document.getElementById('app-background'), albumCover: document.getElementById('album-cover'),
+                trackTitle: document.getElementById('track-title'), trackArtist: document.getElementById('track-artist'), progressBar: document.getElementById('progress-bar'),
+                currentTimeEl: document.getElementById('current-time'), durationEl: document.getElementById('duration'), playPauseBtn: document.getElementById('play-pause-btn'),
+                prevBtn: document.getElementById('prev-btn'), nextBtn: document.getElementById('next-btn'), shuffleBtn: document.getElementById('shuffle-btn'),
+                repeatBtn: document.getElementById('repeat-btn'), navButtons: document.querySelectorAll('.nav-btn'), views: document.querySelectorAll('.view'),
+                addMusicBtn: document.getElementById('add-music-btn'), musicFolderInput: document.getElementById('music-folder-input'), songList: document.getElementById('song-list'),
+                libraryEmptyState: document.getElementById('library-empty-state'), songItemTemplate: document.getElementById('song-item-template'),
+                searchInput: document.getElementById('search-input'), playlistGrid: document.getElementById('playlist-grid'), playlistItemTemplate: document.getElementById('playlist-item-template'),
+                createPlaylistBtn: document.getElementById('create-playlist-btn'), createPlaylistModal: document.getElementById('create-playlist-modal'),
+                playlistModalTitle: document.getElementById('playlist-modal-title'), cancelPlaylistBtn: document.getElementById('cancel-playlist-btn'),
+                confirmPlaylistBtn: document.getElementById('confirm-playlist-btn'), playlistNameInput: document.getElementById('playlist-name-input'),
+                addToPlaylistModal: document.getElementById('add-to-playlist-modal'), playlistSelectionList: document.getElementById('playlist-selection-list'),
+                addToPlaylistCancelBtn: document.getElementById('add-to-playlist-cancel-btn'), playlistDetailsView: document.getElementById('playlist-details-view'),
+                backToPlaylistsBtn: document.getElementById('back-to-playlists-btn'), playlistDetailsTitle: document.getElementById('playlist-details-title'),
+                editPlaylistTitleBtn: document.getElementById('edit-playlist-title-btn'), playlistDetailsMeta: document.getElementById('playlist-details-meta'),
+                playlistDetailsCover: document.getElementById('playlist-details-cover'), playlistDetailsCoverImg: document.getElementById('playlist-details-cover-img'),
+                playlistDetailsCoverIcon: document.getElementById('playlist-details-cover-icon'), playlistSongList: document.getElementById('playlist-song-list'),
+                playlistPlayBtn: document.getElementById('playlist-play-btn'), playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
+                playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'), songOptionsModal: document.getElementById('song-options-modal'),
+                optionsModalTitle: document.getElementById('options-modal-title'), optionsModalArtist: document.getElementById('options-modal-artist'),
+                optionsAddToPlaylistBtn: document.getElementById('options-add-to-playlist-btn'), optionsAddToPlaylistLi: document.getElementById('options-add-to-playlist-li'),
+                optionsRemoveFromPlaylistBtn: document.getElementById('options-remove-from-playlist-btn'), optionsRemoveFromPlaylistLi: document.getElementById('options-remove-from-playlist-li'),
+                optionsDownloadBtn: document.getElementById('options-download-btn'), optionsCancelBtn: document.getElementById('options-cancel-btn'),
+                confirmationModal: document.getElementById('confirmation-modal'), confirmationModalText: document.getElementById('confirmation-modal-text'),
+                confirmationCancelBtn: document.getElementById('confirmation-cancel-btn'), confirmationOkBtn: document.getElementById('confirmation-ok-btn'),
+                toastContainer: document.getElementById('toast-container'),
+                youtubePlayerModal: document.getElementById('youtube-player-modal'), closeYouTubeModalBtn: document.getElementById('close-youtube-modal-btn'),
+                youtubeUrlInput: document.getElementById('youtube-url-input'), playYouTubeBtn: document.getElementById('play-youtube-btn'),
             },
 
+            // --- 3. OBJETOS PRINCIPAIS E CONFIGS ---
+            audio: new Audio(), imageObserver: null, db: null, youtubePlayer: null, CACHE_NAME: 'spobrefy-audio-cache-v1',
+
+            // --- 4. INICIALIZAÇÃO ---
             async init() {
-                this.registerServiceWorker();
-                await this.initDB();
-                this.setupImageObserver();
-                this.bindEvents();
-                this.setupMediaSession();
-                await this.loadSongsFromDB();
-                await this.loadPlaylistsFromDB();
-                await this.syncWithServerFolder();
-                await this.loadPlaybackState();
-                this.updateRepeatButtonUI();
-                this.updateShuffleButtonUI();
-                this.switchView('player-view');
+                this.registerServiceWorker(); await this.initDB(); this.setupImageObserver(); this.bindEvents(); this.setupMediaSession();
+                await this.loadSongsFromDB(); await this.loadPlaylistsFromDB(); await this.syncWithServerFolder(); await this.loadPlaybackState();
+                this.updateRepeatButtonUI(); this.updateShuffleButtonUI(); this.switchView('player-view');
             },
-
-            // ... (outras funções init) ...
-            registerServiceWorker() {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(reg => console.log('Service Worker: Registrado'))
-                        .catch(err => console.log(`Service Worker: Erro: ${err}`));
+            registerServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(err => console.log(err)); } },
+            setupMediaSession() {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.setActionHandler('play', () => this.play()); navigator.mediaSession.setActionHandler('pause', () => this.pause());
+                    navigator.mediaSession.setActionHandler('nexttrack', () => this.changeTrack('next')); navigator.mediaSession.setActionHandler('previoustrack', () => this.changeTrack('prev'));
                 }
             },
-            
-            debounce(func, delay) {
-                return (...args) => {
-                    clearTimeout(this.state.debounceTimer);
-                    this.state.debounceTimer = setTimeout(() => func.apply(this, args), delay);
-                };
+            setupImageObserver() {
+                this.imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target; const src = img.getAttribute('data-src');
+                            if (src) { img.src = src; img.removeAttribute('data-src'); }
+                            observer.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: "100px" });
             },
-
-            animateIcon(element) {
-                const icon = element.querySelector('i');
-                if (icon) {
-                    icon.classList.add('nav-icon-bounce');
-                    icon.addEventListener('animationend', () => icon.classList.remove('nav-icon-bounce'), { once: true });
-                }
-            },
-
             bindEvents() {
                 this.dom.navButtons.forEach(btn => btn.dataset.view && btn.addEventListener('click', e => { this.switchView(e.currentTarget.dataset.view); this.animateIcon(e.currentTarget); }));
-                this.dom.playPauseBtn.addEventListener('click', e => { this.togglePlayPause(); this.animateIcon(e.currentTarget); });
-                this.dom.nextBtn.addEventListener('click', e => { this.changeTrack('next'); this.animateIcon(e.currentTarget); });
-                this.dom.prevBtn.addEventListener('click', e => { this.changeTrack('prev'); this.animateIcon(e.currentTarget); });
-                this.dom.repeatBtn.addEventListener('click', e => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); });
-                this.dom.shuffleBtn.addEventListener('click', e => { this.toggleShuffle(); this.animateIcon(e.currentTarget); });
-                this.dom.progressBar.addEventListener('input', e => this.seek(e.target.value));
-                this.audio.addEventListener('timeupdate', () => this.updateProgress());
-                this.audio.addEventListener('ended', () => this.handleSongEnd());
-                this.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
-                this.audio.addEventListener('pause', () => this.savePlaybackState());
-                this.audio.addEventListener('volumechange', () => this.savePlaybackState());
-                window.addEventListener('beforeunload', () => this.savePlaybackState());
-                this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
+                this.dom.playPauseBtn.addEventListener('click', e => { this.togglePlayPause(); this.animateIcon(e.currentTarget); }));
+                this.dom.nextBtn.addEventListener('click', e => { this.changeTrack('next'); this.animateIcon(e.currentTarget); }));
+                this.dom.prevBtn.addEventListener('click', e => { this.changeTrack('prev'); this.animateIcon(e.currentTarget); }));
+                this.dom.repeatBtn.addEventListener('click', e => { this.toggleRepeatMode(); this.animateIcon(e.currentTarget); }));
+                this.dom.shuffleBtn.addEventListener('click', e => { this.toggleShuffle(); this.animateIcon(e.currentTarget); }));
+                this.dom.progressBar.addEventListener('input', e => this.seek(e.target.value)); this.audio.addEventListener('timeupdate', () => this.updateProgress());
+                this.audio.addEventListener('ended', () => this.handleSongEnd()); this.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
+                this.audio.addEventListener('pause', () => this.savePlaybackState()); this.audio.addEventListener('volumechange', () => this.savePlaybackState());
+                window.addEventListener('beforeunload', () => this.savePlaybackState()); this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.openCreatePlaylistModal());
-                this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false));
-                this.dom.confirmPlaylistBtn.addEventListener('click', () => this.handlePlaylistFormSubmit());
+                this.dom.cancelPlaylistBtn.addEventListener('click', () => this.showPlaylistModal(false)); this.dom.confirmPlaylistBtn.addEventListener('click', () => this.handlePlaylistFormSubmit());
                 this.dom.createPlaylistModal.addEventListener('click', e => { if (e.target === this.dom.createPlaylistModal) this.showPlaylistModal(false); });
                 this.dom.addToPlaylistModal.addEventListener('click', e => { if (e.target === this.dom.addToPlaylistModal) this.showAddToPlaylistModal(false); });
                 this.dom.addToPlaylistCancelBtn.addEventListener('click', () => this.showAddToPlaylistModal(false));
-                this.dom.playlistSelectionList.addEventListener('click', e => {
-                    const listItem = e.target.closest('[data-playlist-id]');
-                    if(listItem) this.addSongToPlaylist(parseInt(listItem.dataset.playlistId));
-                });
+                this.dom.playlistSelectionList.addEventListener('click', e => { const li = e.target.closest('[data-playlist-id]'); if(li) this.addSongToPlaylist(parseInt(li.dataset.playlistId)); });
                 this.dom.optionsCancelBtn.addEventListener('click', () => this.showSongOptionsModal(false));
                 this.dom.songOptionsModal.addEventListener('click', e => { if (e.target === this.dom.songOptionsModal) this.showSongOptionsModal(false); });
                 this.dom.optionsAddToPlaylistBtn.addEventListener('click', () => { this.showAddToPlaylistModal(true); this.showSongOptionsModal(false); });
                 this.dom.optionsRemoveFromPlaylistBtn.addEventListener('click', () => { this.removeSongFromPlaylist(); this.showSongOptionsModal(false); });
                 this.dom.optionsDownloadBtn.addEventListener('click', () => { this.toggleSongOfflineStatus(); this.showSongOptionsModal(false); });
                 this.dom.confirmationCancelBtn.addEventListener('click', () => this.showConfirmationModal(null, null, false));
-                this.dom.confirmationOkBtn.addEventListener('click', () => {
-                    if (typeof this.state.confirmationCallback === 'function') {
-                        this.state.confirmationCallback();
-                    }
-                    this.showConfirmationModal(null, null, false);
-                });
-                this.dom.notificationOkBtn.addEventListener('click', () => this.showNotificationModal(null, false));
+                this.dom.confirmationOkBtn.addEventListener('click', () => { if (typeof this.state.confirmationCallback === 'function') this.state.confirmationCallback(); this.showConfirmationModal(null, null, false); });
                 this.dom.playlistGrid.addEventListener('click', e => {
-                    const entry = e.target.closest('.playlist-item-grid-entry');
-                    if (!entry) return;
-                    const playlistId = parseInt(entry.dataset.id);
-                    if (e.target.closest('.delete-playlist-btn')) this.deletePlaylist(playlistId);
-                    else if (e.target.closest('.edit-playlist-btn')) this.openRenamePlaylistModal(playlistId);
+                    const entry = e.target.closest('.playlist-item-grid-entry'); if (!entry) return; const playlistId = parseInt(entry.dataset.id);
+                    if (e.target.closest('.delete-playlist-btn')) this.deletePlaylist(playlistId); else if (e.target.closest('.edit-playlist-btn')) this.openRenamePlaylistModal(playlistId);
                     else if (e.target.closest('.playlist-clickable-area')) this.showPlaylistDetails(playlistId);
                 });
                 this.dom.backToPlaylistsBtn.addEventListener('click', () => this.switchView('playlists-view'));
-                this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false));
-                this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
+                this.dom.playlistPlayBtn.addEventListener('click', () => this.playPlaylist(false)); this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
                 this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
-                this.dom.playlistSongList.addEventListener('click', e => {
-                    const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                    if(playlist) {
-                        const songs = this.state.songs.filter(s => playlist.songIds.includes(s.id));
-                        this.handleSongListClick(e, songs, true);
-                    }
-                });
-                this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
-                this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
+                this.dom.playlistSongList.addEventListener('click', e => { const p = this.state.playlists.find(p => p.id === this.state.currentPlaylistId); if(p) this.handleSongListClick(e, this.state.songs.filter(s => p.songIds.includes(s.id)), true); });
+                this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false); this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
-            },
-
-            // ... (outras funções, como setupImageObserver, setupMediaSession, etc.) ...
-            setupImageObserver() {
-                this.imageObserver = new IntersectionObserver((entries, observer) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const img = entry.target;
-                            const src = img.getAttribute('data-src');
-                            if (src) {
-                                img.src = src;
-                                img.removeAttribute('data-src');
-                            }
-                            observer.unobserve(img);
-                        }
-                    });
-                }, { rootMargin: "100px" });
-            },
-
-            setupMediaSession() {
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.setActionHandler('play', () => this.play());
-                    navigator.mediaSession.setActionHandler('pause', () => this.pause());
-                    navigator.mediaSession.setActionHandler('nexttrack', () => this.changeTrack('next'));
-                    navigator.mediaSession.setActionHandler('previoustrack', () => this.changeTrack('prev'));
-                }
-            },
-
-            handleTouchStart(event) {
-                const target = event.target.closest('button, input[type="range"], .progress-container, .modal-content');
-                if (target) { this.state.touchStartX = 0; return; }
-                this.state.touchStartX = event.changedTouches[0].screenX;
-            },
-            handleTouchMove(event) {
-                this.state.touchEndX = event.changedTouches[0].screenX;
-            },
-            handleTouchEnd() {
-                if (this.state.touchStartX === 0 || this.state.touchEndX === 0) return;
-                const threshold = 60;
-                const swipeDistance = this.state.touchEndX - this.state.touchStartX;
-                const isSwipe = Math.abs(swipeDistance) > threshold;
-                if (isSwipe) {
-                    const activeView = document.querySelector('.view.active');
-                    if (!activeView) return;
-                    const currentIndex = this.state.viewOrder.indexOf(activeView.id);
-                    if (currentIndex === -1) return;
-                    let nextIndex;
-                    if (swipeDistance < 0) {
-                        nextIndex = Math.min(currentIndex + 1, this.state.viewOrder.length - 1);
-                    } else {
-                        nextIndex = Math.max(currentIndex - 1, 0);
-                    }
-                    if (nextIndex !== currentIndex) {
-                        const nextViewId = this.state.viewOrder[nextIndex];
-                        this.switchView(nextViewId);
-                    }
-                }
-                this.state.touchStartX = 0;
-                this.state.touchEndX = 0;
-            },
-
-            handleSongListClick(event, songSourceList, isPlaylistContext = false) {
-                const songItem = event.target.closest('.song-item');
-                if (!songItem) return;
-                const songId = parseInt(songItem.dataset.songId);
-                if (event.target.closest('.options-btn')) {
-                    this.state.songIdForOptions = songId;
-                    this.state.isPlaylistContextForOptions = isPlaylistContext;
-                    this.showSongOptionsModal(true);
-                } else if (event.target.closest('.clickable-area')) {
-                    this.state.playQueue = [...songSourceList];
-                    const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
-                    const globalIndex = this.state.songs.findIndex(s => s.id === songId);
-                    this.loadSong(globalIndex, true, queueIndex);
-                    if (isPlaylistContext) {
-                        this.switchView('player-view');
-                    }
-                }
+                this.dom.playYouTubeBtn.addEventListener('click', () => this.handlePlayYouTube()); this.dom.closeYouTubeModalBtn.addEventListener('click', () => this.showYouTubePlayerModal(false));
             },
             
-            async addSongToPlaylist(playlistId) {
-                const playlist = this.state.playlists.find(p => p.id === playlistId);
-                const songId = this.state.songIdForOptions;
-                if (playlist && songId && !playlist.songIds.includes(songId)) {
-                    playlist.songIds.push(songId);
-                    await this.savePlaylistToDB(playlist);
-                    await this.loadPlaylistsFromDB();
-                    // ALTERADO: Feedback com Toast
-                    this.showToast(`Adicionado a "${playlist.name}"`, 'success');
-                }
-                this.showAddToPlaylistModal(false);
-            },
-
-            async removeSongFromPlaylist() {
-                const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                const songId = this.state.songIdForOptions;
-                if (playlist && songId) {
-                    this.showConfirmationModal(`Remover "${this.state.songs.find(s => s.id === songId).title}" da playlist?`, async () => {
-                        playlist.songIds = playlist.songIds.filter(id => id !== songId);
-                        await this.savePlaylistToDB(playlist);
-                        this.showPlaylistDetails(this.state.currentPlaylistId);
-                        await this.loadPlaylistsFromDB();
-                        this.showToast('Música removida da playlist.', 'success');
-                    });
-                }
-            },
-            
-            // ... (Funções da Cache API) ...
-            _getAudioCache() {
-                return caches.open(this.CACHE_NAME);
-            },
-            _getCacheKey(song) {
-                return song.path || `local-file://${song.id}`;
-            },
-            async _addSongToCache(song, blob) {
-                const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                const response = new Response(blob);
-                await cache.put(key, response);
-            },
-            async _addSongToCacheFromPath(song) {
-                const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                const response = await fetch(key);
-                if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
-                await cache.put(key, response);
-            },
-            async _removeSongFromCache(song) {
-                const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                await cache.delete(key);
-            },
-            async _getSongFromCache(song) {
-                const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                return await cache.match(key);
-            },
-
-            async toggleSongOfflineStatus(songIdToToggle = null) {
-                const songId = songIdToToggle || this.state.songIdForOptions;
-                const song = this.state.songs.find(s => s.id === songId);
-                if (!song) return;
-                const download = async () => {
-                    this.showToast(`Baixando "${song.title}"...`, 'info', 2000);
-                    try {
-                        if (song.path) {
-                            await this._addSongToCacheFromPath(song);
-                        } else {
-                            console.warn("Tentativa de baixar música local sem um blob de origem.");
-                            this.showToast('Falha ao baixar música local.', 'error');
-                            return false;
-                        }
-                        song.isOffline = true;
-                        await this.saveSongMetadataToDB(song);
-                        this.showToast('Música disponível offline.', 'success');
-                        return true;
-                    } catch (error) {
-                        console.error("Erro no download para o cache:", error);
-                        this.showToast('Erro ao baixar música.', 'error');
-                        song.isOffline = false;
-                        await this.saveSongMetadataToDB(song);
-                        return false;
-                    } finally {
-                        if (!songIdToToggle) this.rerenderCurrentList();
-                    }
-                };
-                if (song.isOffline) {
-                    if (!songIdToToggle) {
-                        this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, async () => {
-                            await this._removeSongFromCache(song);
-                            song.isOffline = false;
-                            await this.saveSongMetadataToDB(song);
-                            this.showToast('Música removida do offline.', 'info');
-                            this.rerenderCurrentList();
-                        });
-                    } else {
-                        await this._removeSongFromCache(song);
-                        song.isOffline = false;
-                        await this.saveSongMetadataToDB(song);
-                    }
-                } else {
-                    await download();
-                }
-            },
-
-            // ... (syncWithServerFolder, loadSong, etc.) ...
-            rerenderCurrentList() {
-                const activeView = document.querySelector('.view.active');
-                if (!activeView) return;
-                if (activeView.id === 'search-view') {
-                    this.renderSongList();
-                    this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
-                }
-                else if (activeView.id === 'playlist-details-view') {
-                    this.showPlaylistDetails(this.state.currentPlaylistId);
-                }
-            },
-
-            playPlaylist(shuffle = false) {
-                const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                if (!playlist || playlist.songIds.length === 0) return;
-                let songsInPlaylist = playlist.songIds.map(id => this.state.songs.find(s => s.id === id)).filter(Boolean);
-                this.state.isShuffle = shuffle;
-                this.updateShuffleButtonUI();
-                if (shuffle) {
-                    for (let i = songsInPlaylist.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [songsInPlaylist[i], songsInPlaylist[j]] = [songsInPlaylist[j], songsInPlaylist[i]];
-                    }
-                }
-                this.state.playQueue = songsInPlaylist;
-                const firstSong = this.state.playQueue[0];
-                const globalIndex = this.state.songs.findIndex(s => s.id === firstSong.id);
-                this.loadSong(globalIndex, true, 0);
-                this.switchView('player-view');
-            },
-
-            async syncWithServerFolder(){try{const e=["Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3","Musics/505(MP3_160K).mp3","Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3","Musics/Art Deco.mp3","Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3","Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3","Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3","Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3","Musics/I Wanna Be Yours(MP3_160K).mp3","Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3","Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3","Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3","Musics/Lied To(MP3_160K).mp3","Musics/Matt Maeson - Put It on Me(MP3_160K).mp3","Musics/No. 1 Party Anthem(MP3_160K).mp3","Musics/Sweater Weather(MP3_160K).mp3","Musics/Your Rarest of Flowers(MP3_160K).mp3","Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3","Musics/R U Mine_(MP3_160K).mp3","Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3","Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3","Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3","Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3","Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3","Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3","Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3","Musics/Manchild(MP3_160K).mp3","Musics/I Love You_ I_m Sorry(MP3_160K).mp3","Musics/if u think i_m pretty(MP3_160K).mp3","Musics/Die For You(MP3_160K).mp3","Musics/Coming Down(MP3_160K).mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
-            switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
-            
-            async loadSong(e, t = !1, s = -1) {
-                if (!(e < 0 || e >= this.state.songs.length)) {
-                    this.state.currentObjectUrl && (URL.revokeObjectURL(this.state.currentObjectUrl), this.state.currentObjectUrl = null), this.state.currentSongIndex = e;
-                    const o = this.state.songs[e];
-                    this.state.currentQueueIndex = s;
-                    try {
-                        if (o.isOffline) {
-                            console.log(`▶️ Tocando offline (do cache): ${o.title}`);
-                            const response = await this._getSongFromCache(o);
-                            if (response) {
-                                const dataBlob = await response.blob();
-                                this.state.currentObjectUrl = URL.createObjectURL(dataBlob);
-                                this.audio.src = this.state.currentObjectUrl;
-                            } else {
-                                console.warn("Dado offline não encontrado no cache, fazendo streaming."), this.audio.src = o.path
-                            }
-                        } else console.log(`▶️ Tocando online (streaming): ${o.title}`), this.audio.src = o.path
-                    } catch (l) {
-                        return void console.error("Erro ao carregar áudio: ", l)
-                    }
-                    this.updatePlayerUI(o);
-                    this.updatePlayingSongUI(o.id);
-
-                    if ("mediaSession" in navigator) {
-                        if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) {
-                            URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
-                        }
-                        const artworkSrcBlob = o.artworkBlob || o.coverBlob;
-                        const artworkUrl = artworkSrcBlob ? URL.createObjectURL(artworkSrcBlob) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: o.title || "Título Desconhecido",
-                            artist: o.artist || "Artista Desconhecido",
-                            album: o.album || "Spobrefy",
-                            artwork: [{
-                                src: artworkUrl,
-                                sizes: "512x512",
-                                type: artworkSrcBlob?.type || "image/jpeg"
-                            }]
-                        });
-                    }
-                    t && this.play()
-                }
-            },
-            
-            play(){this.state.songs.length!==0&&(this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>console.error("Erro ao tocar:",e)),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing"))},
-            pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
-            togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
-            changeTrack(e){const t=this.state.playQueue.length>0?this.state.playQueue:this.state.songs;if(t.length!==0){let s;const o=this.state.currentQueueIndex;if(this.state.isShuffle)do{s=Math.floor(Math.random()*t.length)}while(t.length>1&&s===o);else s=e==="next"?(o+1)%t.length:(o-1+t.length)%t.length;const i=t[s],a=this.state.songs.findIndex(e=>e.id===i.id);this.loadSong(a,!0,s)}},
-            handleSongEnd(){if("one"===this.state.repeatMode)this.audio.currentTime=0,this.play();else if("all"===this.state.repeatMode||"none"===this.state.repeatMode){const e=this.state.playQueue.length>0&&this.state.currentQueueIndex===this.state.playQueue.length-1;"all"===this.state.repeatMode||!e?this.changeTrack("next"):(this.pause(),this.audio.currentTime=0)}},
-            handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
-            savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
-            async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(console.log(`Restaurando estado: Música ID ${t.songId} no tempo ${this.formatTime(t.currentTime)}`),this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
-            seek(e){this.audio.duration&&(this.audio.currentTime=e/100*this.audio.duration,this.dom.progressBar.style.setProperty("--progress-percent",`${e}%`))},
-            updatePlayerUI(e) {
-                this.dom.trackTitle.textContent = e.title || "Título Desconhecido";
-                this.dom.trackArtist.textContent = e.artist || "Artista Desconhecido";
-                if (this.state.currentPlayerCoverUrl) {
-                    URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
-                    this.state.currentPlayerCoverUrl = null;
-                }
-                const placeholder = "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
-                const highResCover = e.artworkBlob || e.coverBlob;
-                let coverUrl;
-                if (highResCover) {
-                    this.state.currentPlayerCoverUrl = URL.createObjectURL(highResCover);
-                    coverUrl = this.state.currentPlayerCoverUrl;
-                } else {
-                    coverUrl = placeholder;
-                }
-                this.dom.albumCover.src = coverUrl;
-                this.dom.background.style.backgroundImage = `url(${coverUrl})`;
-            },
-            updateProgress(){const{duration:e,currentTime:t}=this.audio;e&&(this.dom.progressBar.value=t/e*100,this.dom.progressBar.style.setProperty("--progress-percent",`${t/e*100}%`),this.dom.durationEl.textContent=this.formatTime(e)),this.dom.currentTimeEl.textContent=this.formatTime(t),"mediaSession"in navigator&&this.audio.duration&&navigator.mediaSession.setPositionState({duration:this.audio.duration,playbackRate:this.audio.playbackRate,position:this.audio.currentTime})},
-            formatTime(e){if(isNaN(e))return"0:00";const t=Math.floor(e/60),s=Math.floor(e%60);return`${t}:${s<10?"0":""}${s}`},
-            toggleRepeatMode(){const e=["none","all","one"],t=e.indexOf(this.state.repeatMode);this.state.repeatMode=e[(t+1)%e.length],this.updateRepeatButtonUI()},
-            updateRepeatButtonUI(){this.dom.repeatBtn.classList.remove("text-green-500","repeat-mode-one"),"all"===this.state.repeatMode?this.dom.repeatBtn.classList.add("text-green-500"):"one"===this.state.repeatMode&&this.dom.repeatBtn.classList.add("text-green-500","repeat-mode-one")},
-            toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
-            updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
-            filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
-            
-            // NOVA FUNÇÃO
-            showToast(message, type = 'info', duration = 3000) {
-                const toast = document.createElement('div');
-                const icons = {
-                    success: 'fa-check-circle',
-                    error: 'fa-times-circle',
-                    info: 'fa-info-circle',
-                };
-                const colors = {
-                    success: 'bg-green-500',
-                    error: 'bg-red-500',
-                    info: 'bg-zinc-700',
-                };
-                const iconClass = icons[type] || icons['info'];
-                const colorClass = colors[type] || colors['info'];
-                toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colorClass} toast-in`;
-                toast.innerHTML = `
-                    <i class="fas ${iconClass} text-lg"></i>
-                    <span>${message}</span>
-                `;
-                this.dom.toastContainer.appendChild(toast);
-                setTimeout(() => {
-                    toast.classList.remove('toast-in');
-                    toast.classList.add('toast-out');
-                    toast.addEventListener('animationend', () => {
-                        toast.remove();
-                    });
-                }, duration);
-            },
-            
-            showPlaylistModal(e){e?(this.dom.createPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.remove("scale-95"),this.dom.playlistNameInput.focus()):(this.dom.createPlaylistModal.classList.add("opacity-0"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.createPlaylistModal.classList.add("pointer-events-none"),this.state.playlistIdToEdit=null},300))},
-            showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
-            showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);t&&(this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95"))}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
-            showConfirmationModal(e,t,s=!0){s?(this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300))},
-            showNotificationModal(message, show = true) {
-                if (show) {
-                    this.dom.notificationModalText.textContent = message;
-                    this.dom.notificationModal.classList.remove('opacity-0', 'pointer-events-none');
-                    this.dom.notificationModal.querySelector('.modal-content').classList.remove('scale-95');
-                } else {
-                    this.dom.notificationModal.classList.add('opacity-0');
-                    this.dom.notificationModal.querySelector('.modal-content').classList.add('scale-95');
-                    setTimeout(() => {
-                        this.dom.notificationModal.classList.add('pointer-events-none');
-                    }, 300);
-                }
-            },
-            handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
-            openCreatePlaylistModal() {
-                this.dom.playlistModalTitle.textContent = "Criar nova playlist";
-                this.dom.confirmPlaylistBtn.textContent = "Criar";
-                this.dom.playlistNameInput.value = "";
-                this.state.playlistIdToEdit = null;
-                this.showPlaylistModal(true);
-            },
-            openRenamePlaylistModal(playlistId) {
-                const playlist = this.state.playlists.find(p => p.id === playlistId);
-                if (!playlist) return;
-                this.dom.playlistModalTitle.textContent = "Renomear Playlist";
-                this.dom.confirmPlaylistBtn.textContent = "Salvar";
-                this.dom.playlistNameInput.value = playlist.name;
-                this.state.playlistIdToEdit = playlistId;
-                this.showPlaylistModal(true);
-            },
-            async createPlaylist(){
-                const name = this.dom.playlistNameInput.value.trim();
-                if(!name) return;
-                await this.savePlaylistToDB({name: name, songIds: []});
-                this.showToast('Playlist criada com sucesso!', 'success');
-                this.showPlaylistModal(false);
-                await this.loadPlaylistsFromDB();
-            },
-            async renamePlaylist() {
-                const newName = this.dom.playlistNameInput.value.trim();
-                const playlistId = this.state.playlistIdToEdit;
-                const playlist = this.state.playlists.find(p => p.id === playlistId);
-                if (!newName || !playlist) return;
-                playlist.name = newName;
-                await this.savePlaylistToDB(playlist);
-                this.showToast('Playlist renomeada!', 'success');
-                this.showPlaylistModal(false);
-                await this.loadPlaylistsFromDB();
-                if (this.state.currentPlaylistId === playlistId) {
-                    this.dom.playlistDetailsTitle.textContent = newName;
-                }
-            },
-            async deletePlaylist(e){
-                const playlist = this.state.playlists.find(p => p.id === e);
-                if(!playlist) return;
-                this.showConfirmationModal(`Tem certeza que deseja excluir a playlist "${playlist.name}"?`,async()=>{
-                    await this.deletePlaylistFromDB(e);
-                    this.showToast('Playlist excluída.', 'info');
-                    await this.loadPlaylistsFromDB();
-                })
-            },
-            showPlaylistDetails(e) {
-                this.state.currentPlaylistId = e;
-                const t = this.state.playlists.find(t => t.id === e);
-                if (!t) return;
-                this.dom.playlistDetailsTitle.textContent = t.name;
-                const s = this.state.songs.filter(e => t.songIds.includes(e.id)),
-                    o = s.length,
-                    i = s.reduce((e, t) => e + (t.duration || 0), 0),
-                    a = Math.floor(i / 60);
-                this.dom.playlistDetailsMeta.textContent = `${o} música${o!==1?"s":""}, aprox. ${a} min`;
-                const n = s[0];
-                const highResCover = n ? (n.artworkBlob || n.coverBlob) : null;
-                if (highResCover) {
-                    this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
-                    this.dom.playlistDetailsCoverImg.classList.remove("hidden");
-                    this.dom.playlistDetailsCoverIcon.classList.add("hidden");
-                } else {
-                    this.dom.playlistDetailsCoverImg.classList.add("hidden");
-                    this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
-                }
-                this.renderSongList(s, this.dom.playlistSongList, !0);
-                this.switchView("playlist-details-view");
-            },
-            async downloadPlaylist() {
-                const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                if (!playlist) return;
-                const songsToDownload = playlist.songIds
-                    .map(id => this.state.songs.find(s => s.id === id))
-                    .filter(song => song && !song.isOffline);
-                if (songsToDownload.length === 0) {
-                    this.showToast('Todas as músicas já estão offline.', 'info');
-                    return;
-                }
-                const btn = this.dom.playlistDownloadAllBtn;
-                const originalIcon = btn.innerHTML;
-                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
-                btn.disabled = true;
-                this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
-                for (const song of songsToDownload) {
-                    await this.toggleSongOfflineStatus(song.id);
-                }
-                btn.innerHTML = originalIcon;
-                btn.disabled = false;
-                this.showToast('Download da playlist concluído!', 'success');
-                this.showPlaylistDetails(this.state.currentPlaylistId);
-            },
-            updatePlayingSongUI(playingSongId) {
-                this.dom.songList.querySelectorAll('.song-item').forEach(item => {
-                    item.classList.remove('playing');
-                });
-                if (playingSongId === null || playingSongId === undefined) return;
-                const currentSongItem = this.dom.songList.querySelector(`.song-item[data-song-id="${playingSongId}"]`);
-                if (currentSongItem) {
-                    currentSongItem.classList.add('playing');
-                }
-            },
-            
-            // ... (Funções do IndexedDB) ...
-            db: null,
-            async initDB() {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open("SpobrefyDB", 4); // Versão 4 para garantir a limpeza
-                    request.onerror = e => reject("Erro ao abrir o DB"),
-                    request.onsuccess = e => {
-                        this.db = e.target.result;
-                        resolve(this.db);
-                    };
-                    request.onupgradeneeded = e => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains("songs")) {
-                            const songsStore = db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
-                            songsStore.createIndex("title", "title", { unique: false });
-                            songsStore.createIndex("artist", "artist", { unique: false });
-                        }
-                        if (db.objectStoreNames.contains("songData")) {
-                             db.deleteObjectStore("songData");
-                        }
-                        if (!db.objectStoreNames.contains("playlists")) {
-                            db.createObjectStore("playlists", { keyPath: "id", autoIncrement: true });
-                        }
-                    };
-                });
-            },
-
-            async addMusicFiles(e) {
-                this.showToast(`Adicionando ${e.length} músicas...`, 'info');
+            // --- 5. LÓGICA DE REPRODUÇÃO (PLAYER) ---
+            async loadSong(globalIndex, autoPlay = false, queueIndex = -1) {
+                if (globalIndex < 0 || globalIndex >= this.state.songs.length) return;
+                if (this.state.currentObjectUrl) { URL.revokeObjectURL(this.state.currentObjectUrl); this.state.currentObjectUrl = null; }
+                this.state.currentSongIndex = globalIndex; this.state.currentQueueIndex = queueIndex; const song = this.state.songs[globalIndex];
                 try {
-                    for (const t of e) {
-                        const s = await this.readAudioMetadata(t);
-                        const o = { ...s, path: null, isOffline: !0 };
-                        const i = await this.saveSongMetadataToDB(o, !0);
-                        await this._addSongToCache({ id: i }, t);
-                    }
-                    await this.loadSongsFromDB();
-                    this.showToast('Músicas adicionadas com sucesso!', 'success');
-                } catch (s) {
-                    console.error("Erro ao processar os arquivos:", s);
-                    this.showToast('Erro ao adicionar músicas.', 'error');
+                    if (song.isOffline) {
+                        const response = await this._getSongFromCache(song);
+                        if (response) { const blob = await response.blob(); this.state.currentObjectUrl = URL.createObjectURL(blob); this.audio.src = this.state.currentObjectUrl; }
+                        else { this.showToast("Música offline não encontrada.", "error"); this.audio.src = song.path; }
+                    } else { this.audio.src = song.path; }
+                } catch (error) { console.error(error); this.showToast("Erro ao carregar áudio.", "error"); return; }
+                this.updatePlayerUI(song); this.updatePlayingSongUI(song.id);
+                if ("mediaSession" in navigator) {
+                    if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
+                    const artBlob = song.artworkBlob || song.coverBlob; const artUrl = artBlob ? URL.createObjectURL(artBlob) : "icon-512x512.png";
+                    navigator.mediaSession.metadata = new MediaMetadata({ title: song.title, artist: song.artist, album: song.album, artwork: [{ src: artUrl, sizes: "512x512", type: artBlob?.type }] });
                 }
+                if (autoPlay) this.play();
             },
-            async readAudioMetadata(e) {
-                return new Promise(async (resolve, reject) => {
-                    const s = document.createElement("audio");
-                    s.src = URL.createObjectURL(e);
-                    s.addEventListener("loadedmetadata", () => {
-                        URL.revokeObjectURL(s.src);
-                        jsmediatags.read(e, {
-                            onSuccess: async (o) => {
-                                const { title: i, artist: a, album: n, picture: l } = o.tags;
-                                let originalCoverBlob = null;
-                                let thumbnailBlob = null;
-                                let artworkBlob = null;
-                                if (l) {
-                                    originalCoverBlob = new Blob([new Uint8Array(l.data)], { type: l.format });
-                                    try {
-                                        [thumbnailBlob, artworkBlob] = await Promise.all([
-                                            this.createThumbnail(originalCoverBlob, 100, 100),
-                                            this.createThumbnail(originalCoverBlob, 512, 512)
-                                        ]);
-                                    } catch (error) {
-                                        console.error("Erro ao criar capas:", error);
-                                    }
-                                }
-                                resolve({
-                                    title: i || e.name.replace(/\.[^/.]+$/, ""),
-                                    artist: a,
-                                    album: n,
-                                    coverBlob: thumbnailBlob,
-                                    artworkBlob: artworkBlob,
-                                    duration: s.duration
-                                });
-                            },
-                            onError: (o) => {
-                                console.warn("Erro ao ler metadados:", o);
-                                resolve({
-                                    title: e.name.replace(/\.[^/.]+$/, ""),
-                                    artist: "Artista Desconhecido", album: null, coverBlob: null, artworkBlob: null, duration: s.duration
-                                });
-                            }
-                        });
-                    });
-                    s.addEventListener('error', (err) => {
-                        URL.revokeObjectURL(s.src);
-                        reject(new Error('Erro ao carregar o arquivo de áudio para metadados.'));
-                    });
-                });
+            play() { if (this.state.songs.length === 0) return; this.state.isPlaying = true; this.audio.play(); this.dom.playPauseBtn.innerHTML = '<i class="fas fa-pause text-3xl"></i>'; if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; },
+            pause() { this.state.isPlaying = false; this.audio.pause(); this.dom.playPauseBtn.innerHTML = '<i class="fas fa-play text-3xl ml-1"></i>'; if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; },
+            togglePlayPause() { if (this.state.currentSongIndex === -1 && this.state.songs.length > 0) { this.state.playQueue = [...this.state.songs]; this.loadSong(0, true, 0); } else { this.state.isPlaying ? this.pause() : this.play(); } },
+            changeTrack(direction) {
+                const queue = this.state.playQueue.length > 0 ? this.state.playQueue : this.state.songs; if (queue.length === 0) return; let nextQueueIndex;
+                if (this.state.isShuffle) { do { nextQueueIndex = Math.floor(Math.random() * queue.length); } while (queue.length > 1 && nextQueueIndex === this.state.currentQueueIndex); }
+                else { nextQueueIndex = direction === 'next' ? (this.state.currentQueueIndex + 1) % queue.length : (this.state.currentQueueIndex - 1 + queue.length) % queue.length; }
+                const nextSong = queue[nextQueueIndex]; const nextGlobalIndex = this.state.songs.findIndex(s => s.id === nextSong.id); this.loadSong(nextGlobalIndex, true, nextQueueIndex);
             },
-            async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP ao carregar ${e}: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){console.error("Erro Crítico ao processar arquivo remoto:",o);const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
-            async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite"),a=i.objectStore("songs"),n=a.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
+            handleSongEnd() { if (this.state.repeatMode === 'one') { this.audio.currentTime = 0; this.play(); } else { const isLast = this.state.playQueue.length > 0 && this.state.currentQueueIndex === this.state.playQueue.length - 1; if (this.state.repeatMode === 'all' || !isLast) this.changeTrack('next'); else { this.pause(); this.audio.currentTime = 0; } } },
+            seek(value) { if (this.audio.duration) { this.audio.currentTime = (value / 100) * this.audio.duration; } },
+            toggleRepeatMode() { const modes = ['none', 'all', 'one']; this.state.repeatMode = modes[(modes.indexOf(this.state.repeatMode) + 1) % 3]; this.updateRepeatButtonUI(); },
+            toggleShuffle() { this.state.isShuffle = !this.state.isShuffle; this.updateShuffleButtonUI(); },
+            savePlaybackState() { if (this.state.currentSongIndex === -1) return; const song = this.state.songs[this.state.currentSongIndex]; if (!song) return; localStorage.setItem("spobrefyPlaybackState", JSON.stringify({ songId: song.id, currentTime: this.audio.currentTime, volume: this.audio.volume })); },
+            async loadPlaybackState() {
+                const stateJSON = localStorage.getItem("spobrefyPlaybackState"); if (!stateJSON) return;
+                try {
+                    const state = JSON.parse(stateJSON); this.audio.volume = state.volume || 1; const songIndex = this.state.songs.findIndex(s => s.id === state.songId);
+                    if (songIndex > -1) { this.state.restoredState = state; this.loadSong(songIndex, false); }
+                } catch (e) { localStorage.removeItem("spobrefyPlaybackState"); }
+            },
+            handleMetadataLoaded(){ const song = this.state.songs[this.state.currentSongIndex]; if (song && !song.duration) { song.duration = this.audio.duration; this.saveSongMetadataToDB(song); } this.updateProgress(); if (this.state.restoredState && song?.id === this.state.restoredState.songId) { this.audio.currentTime = this.state.restoredState.currentTime; this.state.restoredState = null; } },
             
-            async deleteSongFromDB(songId) {
-                const songToDelete = this.state.songs.find(s => s.id === songId);
-                if (songToDelete && songToDelete.isOffline) {
-                    await this._removeSongFromCache(songToDelete);
-                }
-                return new Promise((resolve, reject) => {
-                    const transaction = this.db.transaction(["songs"], "readwrite");
-                    const store = transaction.objectStore("songs");
-                    store.delete(songId);
-                    transaction.oncomplete = resolve;
-                    transaction.onerror = reject;
-                });
+            // --- 6. ATUALIZAÇÃO DA INTERFACE (UI) ---
+            updatePlayerUI(song) { this.dom.trackTitle.textContent = song.title; this.dom.trackArtist.textContent = song.artist || "Artista Desconhecido"; if (this.state.currentPlayerCoverUrl) URL.revokeObjectURL(this.state.currentPlayerCoverUrl); const cover = song.artworkBlob || song.coverBlob; const url = cover ? URL.createObjectURL(cover) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy"; this.state.currentPlayerCoverUrl = url.startsWith("blob:") ? url : null; this.dom.albumCover.src = url; this.dom.background.style.backgroundImage = `url(${url})`; },
+            updateProgress() { const { duration, currentTime } = this.audio; if (duration) { const percent = (currentTime / duration) * 100; this.dom.progressBar.value = percent; this.dom.progressBar.style.setProperty("--progress-percent", `${percent}%`); this.dom.durationEl.textContent = this.formatTime(duration); } this.dom.currentTimeEl.textContent = this.formatTime(currentTime); if ('mediaSession' in navigator && duration) navigator.mediaSession.setPositionState({ duration, playbackRate: 1, position: currentTime }); },
+            formatTime: (s) => `${Math.floor(s/60)}:${('0'+Math.floor(s%60)).slice(-2)}`,
+            updateRepeatButtonUI() { this.dom.repeatBtn.classList.remove("text-green-500", "repeat-mode-one"); if (this.state.repeatMode === 'all') this.dom.repeatBtn.classList.add("text-green-500"); else if (this.state.repeatMode === 'one') this.dom.repeatBtn.classList.add("text-green-500", "repeat-mode-one"); },
+            updateShuffleButtonUI() { this.dom.shuffleBtn.classList.toggle("text-green-500", this.state.isShuffle); },
+            updatePlayingSongUI(id) { document.querySelectorAll('.song-item').forEach(item => item.classList.toggle('playing', parseInt(item.dataset.songId) === id)); },
+            switchView(id) { this.dom.views.forEach(v => v.classList.toggle('active', v.id === id)); this.dom.navButtons.forEach(b => { if (b.dataset.view) { b.classList.toggle('text-green-500', b.dataset.view === id); b.classList.toggle('text-zinc-400', b.dataset.view !== id); } }); },
+            rerenderCurrentList() { const view = document.querySelector('.view.active'); if (!view) return; if (view.id === 'search-view') this.renderSongList(); else if (view.id === 'playlist-details-view') this.showPlaylistDetails(this.state.currentPlaylistId); this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id); },
+            
+            // --- 7. RENDERIZAÇÃO DE LISTAS ---
+            renderSongList(songs = this.state.songs, target = this.dom.songList) {
+                this.cleanupObjectURLs(target); target.innerHTML = ""; if (target === this.dom.songList) this.dom.libraryEmptyState.classList.toggle("hidden", songs.length > 0);
+                const frag = document.createDocumentFragment(); songs.forEach(song => {
+                    const item = this.dom.songItemTemplate.content.cloneNode(true); const cover = item.querySelector(".song-cover");
+                    item.querySelector(".song-item").dataset.songId = song.id; cover.setAttribute("data-src", song.coverBlob ? URL.createObjectURL(song.coverBlob) : "https://placehold.co/100x100/27272a/3f3f46?text=?");
+                    this.imageObserver.observe(cover); item.querySelector(".song-title").textContent = song.title; item.querySelector(".song-artist").textContent = song.artist || "Artista Desconhecido";
+                    item.querySelector(".offline-indicator").classList.toggle("hidden", !song.isOffline); frag.appendChild(item);
+                }); target.appendChild(frag);
+            },
+            renderPlaylistGrid() { this.cleanupObjectURLs(this.dom.playlistGrid); this.dom.playlistGrid.innerHTML = ""; const frag = document.createDocumentFragment(); this.state.playlists.forEach(p => { const item = this.dom.playlistItemTemplate.content.cloneNode(true); const cover = item.querySelector(".playlist-cover"); item.querySelector(".playlist-item-grid-entry").dataset.id = p.id; item.querySelector(".playlist-name").textContent = p.name; item.querySelector(".playlist-song-count").textContent = `${p.songIds.length} música(s)`; let coverUrl = "https://placehold.co/100x100/101010/1DB954?text=PLAY"; if (p.songIds.length > 0) { const song = this.state.songs.find(s => s.id === p.songIds[0]); if (song && song.coverBlob) coverUrl = URL.createObjectURL(song.coverBlob); } cover.setAttribute("data-src", coverUrl); this.imageObserver.observe(cover); frag.appendChild(item); }); this.dom.playlistGrid.appendChild(frag); },
+            renderPlaylistSelectionList() {
+                this.dom.playlistSelectionList.innerHTML = ''; const songId = this.state.songIdForOptions;
+                if (this.state.playlists.length === 0) { this.dom.playlistSelectionList.innerHTML = `<p class="text-zinc-400 text-center p-4">Nenhuma playlist.</p>`; return; }
+                this.state.playlists.forEach(p => { const btn = document.createElement('button'); btn.className = 'w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left'; btn.dataset.playlistId = p.id; btn.textContent = p.name; if (p.songIds.includes(songId)) { const check = document.createElement('i'); check.className = 'fas fa-check text-green-500'; btn.appendChild(check); btn.disabled = true; btn.classList.add('opacity-60'); } this.dom.playlistSelectionList.appendChild(btn); });
             },
 
-            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result;this.renderSongList();this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);e(this.state.songs)},i.onerror=t})},
-            async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
-            async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
-            async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
-            cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
-            renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})()},
-            renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
-            renderPlaylistSelectionList() {
-                this.dom.playlistSelectionList.innerHTML = '';
-                const songId = this.state.songIdForOptions;
-                if (this.state.playlists.length === 0) {
-                    this.dom.playlistSelectionList.innerHTML = `<p class="text-zinc-400 text-center p-4">Nenhuma playlist criada.</p>`;
-                    return;
-                }
-                const fragment = document.createDocumentFragment();
-                this.state.playlists.forEach(p => {
-                    const button = document.createElement('button');
-                    button.className = 'w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left';
-                    button.dataset.playlistId = p.id;
-                    const name = document.createElement('span');
-                    name.textContent = p.name;
-                    button.appendChild(name);
-                    const songIsInPlaylist = p.songIds.includes(songId);
-                    if (songIsInPlaylist) {
-                        const check = document.createElement('i');
-                        check.className = 'fas fa-check text-green-500';
-                        button.appendChild(check);
-                        button.disabled = true;
-                        button.classList.add('opacity-60', 'cursor-not-allowed');
-                    }
-                    fragment.appendChild(button);
-                });
-                this.dom.playlistSelectionList.appendChild(fragment);
-            }
-        };
+            // --- 8. GERENCIAMENTO DE MÚSICAS ---
+            async addMusicFiles(files) { this.showToast(`Adicionando ${files.length} músicas...`, 'info'); try { for (const file of files) { const metadata = await this.readAudioMetadata(file); const songId = await this.saveSongMetadataToDB({ ...metadata, path: null, isOffline: true }, true); await this._addSongToCache({ id: songId }, file); } await this.loadSongsFromDB(); this.showToast('Músicas adicionadas!', 'success'); } catch (e) { this.showToast('Erro ao adicionar músicas.', 'error'); } },
+            async syncWithServerFolder(){try{const e=["Musics/minha-musica.mp3","Musics/som-legal.mp3"];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0;const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){t=!0;for(const c of l)await this.deleteSongFromDB(c.id)}if(t){await this.loadSongsFromDB();await this.loadPlaylistsFromDB()}}catch(r){console.error(r)}},
 
+            // --- 9. GERENCIAMENTO DE PLAYLISTS ---
+            handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
+            async createPlaylist() { const name = this.dom.playlistNameInput.value.trim(); if (!name) return; await this.savePlaylistToDB({ name, songIds: [] }); this.showToast('Playlist criada!', 'success'); this.showPlaylistModal(false); await this.loadPlaylistsFromDB(); },
+            async renamePlaylist() { const newName = this.dom.playlistNameInput.value.trim(); const pId = this.state.playlistIdToEdit; const p = this.state.playlists.find(p => p.id === pId); if (!newName || !p) return; p.name = newName; await this.savePlaylistToDB(p); this.showToast('Playlist renomeada!', 'success'); this.showPlaylistModal(false); await this.loadPlaylistsFromDB(); if (this.state.currentPlaylistId === pId) this.dom.playlistDetailsTitle.textContent = newName; },
+            async deletePlaylist(id) { const p = this.state.playlists.find(p => p.id === id); if(!p) return; this.showConfirmationModal(`Excluir a playlist "${p.name}"?`, async () => { await this.deletePlaylistFromDB(id); this.showToast('Playlist excluída.', 'info'); if(this.state.currentPlaylistId === id) this.switchView('playlists-view'); await this.loadPlaylistsFromDB(); }) },
+            showPlaylistDetails(id) {
+                this.state.currentPlaylistId = id; const p = this.state.playlists.find(p => p.id === id); if (!p) return; this.dom.playlistDetailsTitle.textContent = p.name;
+                const songs = this.state.songs.filter(s => p.songIds.includes(s.id)); const duration = songs.reduce((acc, s) => acc + (s.duration || 0), 0);
+                this.dom.playlistDetailsMeta.textContent = `${songs.length} música(s), ${Math.floor(duration / 60)} min`; const cover = songs[0] ? (songs[0].artworkBlob || songs[0].coverBlob) : null;
+                if (cover) { this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(cover); this.dom.playlistDetailsCoverImg.classList.remove("hidden"); this.dom.playlistDetailsCoverIcon.classList.add("hidden"); }
+                else { this.dom.playlistDetailsCoverImg.classList.add("hidden"); this.dom.playlistDetailsCoverIcon.classList.remove("hidden"); }
+                this.renderSongList(songs, this.dom.playlistSongList); this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id); this.switchView("playlist-details-view");
+            },
+            async addSongToPlaylist(id) { const p = this.state.playlists.find(p => p.id === id); const sId = this.state.songIdForOptions; if (p && sId && !p.songIds.includes(sId)) { p.songIds.push(sId); await this.savePlaylistToDB(p); await this.loadPlaylistsFromDB(); this.showToast(`Adicionado a "${p.name}"`, 'success'); } this.showAddToPlaylistModal(false); },
+            async removeSongFromPlaylist() { const p = this.state.playlists.find(p => p.id === this.state.currentPlaylistId); const sId = this.state.songIdForOptions; const song = this.state.songs.find(s => s.id === sId); if (p && song) { this.showConfirmationModal(`Remover "${song.title}"?`, async () => { p.songIds = p.songIds.filter(id => id !== sId); await this.savePlaylistToDB(p); this.showToast('Música removida.', 'success'); this.showPlaylistDetails(this.state.currentPlaylistId); await this.loadPlaylistsFromDB(); }); } },
+            playPlaylist(shuffle = false) { const p = this.state.playlists.find(p => p.id === this.state.currentPlaylistId); if (!p || p.songIds.length === 0) return; let songs = p.songIds.map(id => this.state.songs.find(s => s.id === id)).filter(Boolean); this.state.isShuffle = shuffle; this.updateShuffleButtonUI(); if (shuffle) songs.sort(() => Math.random() - 0.5); this.state.playQueue = songs; const globalIndex = this.state.songs.findIndex(s => s.id === songs[0].id); this.loadSong(globalIndex, true, 0); this.switchView('player-view'); },
+
+            // --- 10. METADADOS E THUMBNAILS ---
+            async readAudioMetadata(file) { return new Promise((resolve) => { const audio = document.createElement("audio"); audio.src = URL.createObjectURL(file); audio.onloadedmetadata = () => { URL.revokeObjectURL(audio.src); jsmediatags.read(file, { onSuccess: async (tag) => { const { title, artist, album, picture } = tag.tags; let coverBlob = null, artworkBlob = null; if (picture) { const picBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format }); try { [coverBlob, artworkBlob] = await Promise.all([this.createThumbnail(picBlob, 100, 100), this.createThumbnail(picBlob, 512, 512)]); } catch (e) {} } resolve({ title: title || file.name.replace(/\.[^/.]+$/, ""), artist, album, coverBlob, artworkBlob, duration: audio.duration }); }, onError: () => resolve({ title: file.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null, artworkBlob: null, duration: audio.duration }) }); }; }); },
+            async readRemoteAudioMetadata(url){ try { const res = await fetch(url); const blob = await res.blob(); return await this.readAudioMetadata(blob); } catch (e) { const filename = url.split("/").pop(); return { title: filename.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido" }; } },
+            createThumbnail(blob, w, h) { return new Promise((resolve, reject) => { const img = new Image(); img.src = URL.createObjectURL(blob); img.onload = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d'); const sAR = img.naturalWidth / img.naturalHeight, tAR = w / h; let dW, dH, x, y; if (sAR > tAR) { dH = h; dW = h * sAR; x = (w - dW) / 2; y = 0; } else { dW = w; dH = w / sAR; x = 0; y = (h - dH) / 2; } ctx.drawImage(img, x, y, dW, dH); c.toBlob(b => resolve(b), 'image/jpeg', 0.8); URL.revokeObjectURL(img.src); }; img.onerror = reject; }); },
+
+            // --- 11. GERENCIAMENTO OFFLINE (CACHE API) ---
+            _getAudioCache: () => caches.open(App.CACHE_NAME), _getCacheKey: (s) => s.path || `local-file://${s.id}`,
+            async _addSongToCache(s, blob) { const c = await this._getAudioCache(); await c.put(this._getCacheKey(s), new Response(blob)); },
+            async _addSongToCacheFromPath(s) { const res = await fetch(this._getCacheKey(s)); const c = await this._getAudioCache(); await c.put(this._getCacheKey(s), res); },
+            async _removeSongFromCache(s) { const c = await this._getAudioCache(); await c.delete(this._getCacheKey(s)); },
+            async _getSongFromCache(s) { const c = await this._getAudioCache(); return await c.match(this._getCacheKey(s)); },
+            async toggleSongOfflineStatus(id = null) { const sId = id || this.state.songIdForOptions; const song = this.state.songs.find(s => s.id === sId); if (!song) return; const download = async () => { this.showToast(`Baixando "${song.title}"...`, 'info', 2000); try { if (song.path) await this._addSongToCacheFromPath(song); else { this.showToast('Falha ao baixar.', 'error'); return; } song.isOffline = true; await this.saveSongMetadataToDB(song); this.showToast('Disponível offline.', 'success'); } catch (e) { song.isOffline = false; await this.saveSongMetadataToDB(song); this.showToast('Erro ao baixar.', 'error'); } finally { if (!id) this.rerenderCurrentList(); } }; if (song.isOffline) { const remove = async () => { await this._removeSongFromCache(song); song.isOffline = false; await this.saveSongMetadataToDB(song); this.showToast('Removido do offline.', 'info'); this.rerenderCurrentList(); }; id ? await remove() : this.showConfirmationModal(`Remover "${song.title}" do offline?`, remove); } else await download(); },
+            async downloadPlaylist() { const p = this.state.playlists.find(p => p.id === this.state.currentPlaylistId); if (!p) return; const songs = p.songIds.map(id => this.state.songs.find(s => s.id === id)).filter(s => s && !s.isOffline); if (songs.length === 0) { this.showToast('Músicas já offline.', 'info'); return; } const btn = this.dom.playlistDownloadAllBtn; const icon = btn.innerHTML; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`; btn.disabled = true; this.showToast(`Baixando ${songs.length} música(s)...`, 'info'); for (const s of songs) await this.toggleSongOfflineStatus(s.id); btn.innerHTML = icon; btn.disabled = false; this.showToast('Download concluído!', 'success'); this.showPlaylistDetails(this.state.currentPlaylistId); },
+            
+            // --- 12. BANCO DE DADOS (INDEXEDDB) ---
+            async initDB() { return new Promise((resolve, reject) => { const req = indexedDB.open("SpobrefyDB", 4); req.onerror = reject; req.onsuccess = e => { this.db = e.target.result; resolve(); }; req.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains("songs")) db.createObjectStore("songs", { keyPath: "id", autoIncrement: true }); if (!db.objectStoreNames.contains("playlists")) db.createObjectStore("playlists", { keyPath: "id", autoIncrement: true }); }; }); },
+            async saveSongMetadataToDB(song, returnId = false) { return new Promise((resolve, reject) => { const tx = this.db.transaction(["songs"], "readwrite"); const req = tx.objectStore("songs").put(song); tx.oncomplete = () => resolve(returnId ? req.result : undefined); tx.onerror = reject; }); },
+            async deleteSongFromDB(id) { const song = this.state.songs.find(s => s.id === id); if (song && song.isOffline) await this._removeSongFromCache(song); return new Promise((resolve, reject) => { const tx = this.db.transaction(["songs"], "readwrite"); tx.objectStore("songs").delete(id); tx.oncomplete = resolve; tx.onerror = reject; }); },
+            async loadSongsFromDB() { return new Promise((resolve, reject) => { const tx = this.db.transaction(["songs"], "readonly"); tx.objectStore("songs").getAll().onsuccess = e => { this.state.songs = e.target.result; this.renderSongList(); resolve(); }; tx.onerror = reject; }); },
+            async savePlaylistToDB(p) { return new Promise((resolve, reject) => { const tx = this.db.transaction(["playlists"], "readwrite"); tx.objectStore("playlists").put(p); tx.oncomplete = resolve; tx.onerror = reject; }); },
+            async loadPlaylistsFromDB() { return new Promise((resolve, reject) => { const tx = this.db.transaction(["playlists"], "readonly"); tx.objectStore("playlists").getAll().onsuccess = e => { this.state.playlists = e.target.result; this.renderPlaylistGrid(); resolve(); }; tx.onerror = reject; }); },
+            async deletePlaylistFromDB(id) { return new Promise((resolve, reject) => { const tx = this.db.transaction(["playlists"], "readwrite"); tx.objectStore("playlists").delete(id); tx.oncomplete = resolve; tx.onerror = reject; }); },
+            
+            // --- 13. MODAIS E NOTIFICAÇÕES ---
+            showToast(message, type = 'info', duration = 3000) { const toast = document.createElement('div'); const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' }; const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-zinc-700' }; toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colors[type]} toast-in`; toast.innerHTML = `<i class="fas ${icons[type]} text-lg"></i><span>${message}</span>`; this.dom.toastContainer.appendChild(toast); setTimeout(() => { toast.classList.replace('toast-in', 'toast-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration); },
+            _toggleModal(modal, show) { const content = modal.querySelector('.modal-content'); if (show) { modal.classList.remove('opacity-0', 'pointer-events-none'); content.classList.remove('scale-95', 'translate-y-full'); } else { modal.classList.add('opacity-0'); content.classList.add(content.matches('.sm:scale-95') ? 'sm:scale-95' : 'scale-95'); if (content.matches('.sm:translate-y-0')) content.classList.add('translate-y-full'); setTimeout(() => modal.classList.add('pointer-events-none'), 300); } },
+            showPlaylistModal(show) { this._toggleModal(this.dom.createPlaylistModal, show); },
+            showAddToPlaylistModal(show) { if(show) this.renderPlaylistSelectionList(); this._toggleModal(this.dom.addToPlaylistModal, show); },
+            showConfirmationModal(text, cb, show = true) { if(show) { this.state.confirmationCallback = cb; this.dom.confirmationModalText.textContent = text; } this._toggleModal(this.dom.confirmationModal, show); },
+            showSongOptionsModal(show) { if (show) { const song = this.state.songs.find(s => s.id === this.state.songIdForOptions); if (song) { this.dom.optionsModalTitle.textContent = song.title; this.dom.optionsModalArtist.textContent = song.artist || "Artista Desconhecido"; this.dom.optionsAddToPlaylistLi.style.display = this.state.isPlaylistContextForOptions ? "none" : "block"; this.dom.optionsRemoveFromPlaylistLi.style.display = this.state.isPlaylistContextForOptions ? "block" : "none"; this.dom.optionsDownloadBtn.textContent = song.isOffline ? "Remover do offline" : "Baixar"; this.dom.optionsDownloadBtn.classList.toggle("text-red-500", song.isOffline); } } this._toggleModal(this.dom.songOptionsModal, show); },
+            openCreatePlaylistModal() { this.dom.playlistModalTitle.textContent = "Criar playlist"; this.dom.confirmPlaylistBtn.textContent = "Criar"; this.dom.playlistNameInput.value = ""; this.state.playlistIdToEdit = null; this.showPlaylistModal(true); },
+            openRenamePlaylistModal(id) { const p = this.state.playlists.find(p => p.id === id); if (!p) return; this.dom.playlistModalTitle.textContent = "Renomear Playlist"; this.dom.confirmPlaylistBtn.textContent = "Salvar"; this.dom.playlistNameInput.value = p.name; this.state.playlistIdToEdit = id; this.showPlaylistModal(true); },
+            getYouTubeVideoId(url) { let id = null; const patterns = [/(?:v=)([^&]+)/, /(?:youtu\.be\/)([^?]+)/, /(?:embed\/)([^?]+)/]; for (const p of patterns) { const match = url.match(p); if (match && match[1]) { id = match[1]; break; } } return id; },
+            handlePlayYouTube() { const url = this.dom.youtubeUrlInput.value.trim(); if (!url) { this.showToast("Insira um link do YouTube.", "error"); return; } const id = this.getYouTubeVideoId(url); if (!id) { this.showToast("Link do YouTube inválido.", "error"); return; } if (this.state.isPlaying) this.pause(); this.showYouTubePlayerModal(true, id); this.dom.youtubeUrlInput.value = ''; },
+            showYouTubePlayerModal(show, videoId = null) {
+                this._toggleModal(this.dom.youtubePlayerModal, show);
+                if (show && videoId) {
+                    if (this.youtubePlayer && typeof this.youtubePlayer.loadVideoById === 'function') { this.youtubePlayer.loadVideoById(videoId); }
+                    else { window.onYouTubeIframeAPIReady = () => { this.youtubePlayer = new YT.Player('youtube-player-container', { height: '100%', width: '100%', videoId, playerVars: { 'autoplay': 1, 'controls': 1, 'rel': 0 }});}; if (window.YT && window.YT.Player) window.onYouTubeIframeAPIReady(); }
+                } else if (this.youtubePlayer && typeof this.youtubePlayer.stopVideo === 'function') { this.youtubePlayer.stopVideo(); }
+            },
+
+            // --- 14. EVENT HANDLERS E UTILITÁRIOS ---
+            handleSongListClick(e, source, isPlaylist) { const item = e.target.closest('.song-item'); if (!item) return; const id = parseInt(item.dataset.songId); if (e.target.closest('.options-btn')) { this.state.songIdForOptions = id; this.state.isPlaylistContextForOptions = isPlaylist; this.showSongOptionsModal(true); } else if (e.target.closest('.clickable-area')) { this.state.playQueue = [...source]; const qIdx = source.findIndex(s => s.id === id); const gIdx = this.state.songs.findIndex(s => s.id === id); this.loadSong(gIdx, true, qIdx); if (isPlaylist) this.switchView('player-view'); } },
+            handleTouchStart(e) { if (e.target.closest('button, input, .modal-content')) { this.state.touchStartX = 0; return; } this.state.touchStartX = e.changedTouches[0].screenX; },
+            handleTouchMove(e) { this.state.touchEndX = e.changedTouches[0].screenX; },
+            handleTouchEnd() { if (!this.state.touchStartX || !this.state.touchEndX) return; const dist = this.state.touchEndX - this.state.touchStartX; if (Math.abs(dist) > 60) { const view = document.querySelector('.view.active'); if (!view) return; const cIdx = this.state.viewOrder.indexOf(view.id); let nIdx; if (dist < 0) nIdx = Math.min(cIdx + 1, 2); else nIdx = Math.max(cIdx - 1, 0); if (nIdx !== cIdx) this.switchView(this.state.viewOrder[nIdx]); } this.state.touchStartX = this.state.touchEndX = 0; },
+            filterSongList(query) { const term = query.toLowerCase().trim(); this.dom.songList.querySelectorAll(".song-item").forEach(item => { const title = item.querySelector(".song-title").textContent.toLowerCase(); const artist = item.querySelector(".song-artist").textContent.toLowerCase(); item.style.display = title.includes(term) || artist.includes(term) ? "flex" : "none"; }); },
+            animateIcon(el) { const icon = el.querySelector('i'); if (icon) { icon.classList.add('nav-icon-bounce'); icon.addEventListener('animationend', () => icon.classList.remove('nav-icon-bounce'), { once: true }); } },
+            debounce(func, delay) { return (...args) => { clearTimeout(this.state.debounceTimer); this.state.debounceTimer = setTimeout(() => func.apply(this, args), delay); }; },
+            cleanupObjectURLs(container) { container.querySelectorAll("img[src^='blob:']").forEach(img => URL.revokeObjectURL(img.src)); },
+        };
         App.init();
     });
 </script>
