@@ -261,6 +261,9 @@
                     <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg">
                         <i class="fas fa-folder-plus text-xl"></i>
                     </button>
+                    <button id="sync-btn" title="Sincronizar Catálogo" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg disabled:opacity-50 disabled:cursor-wait">
+                        <i class="fas fa-sync text-lg"></i>
+                    </button>
                 </div>
             </div>
 
@@ -436,6 +439,8 @@
                 navButtons: document.querySelectorAll('.nav-btn'),
                 views: document.querySelectorAll('.view'),
                 addMusicBtn: document.getElementById('add-music-btn'),
+                // BOTÃO DE SINCRONIZAÇÃO MAPEADO
+                syncBtn: document.getElementById('sync-btn'),
                 musicFolderInput: document.getElementById('music-folder-input'),
                 songList: document.getElementById('song-list'),
                 libraryEmptyState: document.getElementById('library-empty-state'),
@@ -614,6 +619,8 @@
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
                 window.addEventListener('beforeunload', () => this.savePlaybackState());
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
+                // EVENTO DE CLIQUE ADICIONADO AO BOTÃO DE SINCRONIZAÇÃO
+                this.dom.syncBtn.addEventListener('click', () => this.syncWithServerFolder());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
                 this.dom.createPlaylistBtn.addEventListener('click', () => this.openCreatePlaylistModal());
@@ -879,9 +886,13 @@
             // =================================================================
             // INÍCIO DO CÓDIGO OTIMIZADO
             // =================================================================
+            // FUNÇÃO MODIFICADA PARA INDICADOR VISUAL
             async syncWithServerFolder() {
+                const syncIcon = this.dom.syncBtn.querySelector('i');
+                syncIcon.classList.add('fa-spin');
+                this.dom.syncBtn.disabled = true;
+
                 try {
-                    // Lista de músicas "do servidor".
                     const serverSongPaths = [
                         "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3",
                         "Musics/505(MP3_160K).mp3",
@@ -930,59 +941,49 @@
                         "Musics/Video Games(MP3_160K).mp3"
                     ];
 
-                    // Passo 1: Otimizar a busca por músicas existentes.
-                    // Usamos um Set para uma verificação de existência muito mais rápida (O(1) em vez de O(n)).
                     const existingPaths = new Set(this.state.songs.map(song => song.path));
                     const serverPathsSet = new Set(serverSongPaths);
-
-                    // Passo 2: Identificar todas as músicas novas e as que foram removidas.
                     const newPaths = serverSongPaths.filter(path => !existingPaths.has(path));
                     const pathsToRemove = this.state.songs.filter(song => song.path && !serverPathsSet.has(song.path));
-
                     let hasChanges = false;
 
-                    // Passo 3: Processar todas as novas músicas em paralelo.
                     if (newPaths.length > 0) {
                         hasChanges = true;
                         console.log(`🔎 Encontradas ${newPaths.length} novas músicas. Processando em paralelo...`);
-                        
-                        // Cria um array de "promessas". Cada promessa representa o trabalho de buscar e salvar uma música.
                         const newSongsPromises = newPaths.map(async (path) => {
                             const metadata = await this.readRemoteAudioMetadata(path);
                             const songData = { ...metadata, path: path, isOffline: false };
                             await this.saveSongMetadataToDB(songData);
                         });
-
-                        // Promise.all espera que todas as promessas sejam concluídas.
-                        // Isso executa o download e processamento de várias músicas ao mesmo tempo.
                         await Promise.all(newSongsPromises);
                         console.log(`✅ ${newPaths.length} novas músicas adicionadas.`);
                     }
 
-                    // Passo 4: Remover todas as músicas obsoletas em paralelo.
                     if (pathsToRemove.length > 0) {
                         hasChanges = true;
                         console.log(`🗑️ Removendo ${pathsToRemove.length} músicas obsoletas em paralelo...`);
-
-                        // Da mesma forma, criamos um array de promessas para a exclusão.
                         const deletePromises = pathsToRemove.map(song => this.deleteSongFromDB(song.id));
-
                         await Promise.all(deletePromises);
                         console.log(`✅ ${pathsToRemove.length} músicas obsoletas removidas.`);
                     }
-
-                    // Passo 5: Atualizar o estado e a interface do usuário apenas uma vez no final, se houver mudanças.
+                    
                     if (hasChanges) {
+                        this.showToast('Catálogo sincronizado!', 'success');
                         console.log("🎶 Catálogo sincronizado. Recarregando dados...");
-                        await this.loadSongsFromDB(); // Carrega a lista de músicas atualizada do DB.
-                        await this.loadPlaylistsFromDB(); // Recarrega playlists para remover referências a músicas deletadas.
+                        await this.loadSongsFromDB();
+                        await this.loadPlaylistsFromDB();
                     } else {
+                        this.showToast('Catálogo já está atualizado.', 'info');
                         console.log("✅ Catálogo já está atualizado.");
                     }
 
                 } catch (error) {
                     console.error("Erro ao sincronizar músicas do servidor:", error);
                     this.showToast('Erro ao sincronizar biblioteca.', 'error');
+                } finally {
+                    // BLOCO FINALLY PARA GARANTIR QUE A ANIMAÇÃO PARE
+                    syncIcon.classList.remove('fa-spin');
+                    this.dom.syncBtn.disabled = false;
                 }
             },
             // =================================================================
