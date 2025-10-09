@@ -504,14 +504,13 @@
                 isPlaylistContextForOptions: false,
                 confirmationCallback: null,
                 playlistIdToEdit: null,
-                activeToastTimeout: null, // ALTERAÇÃO 1: Guarda a referência do timer da notificação ativa
+                activeToastTimeout: null, 
             },
 
             audio: new Audio(),
             imageObserver: null,
             CACHE_NAME: 'spobrefy-audio-cache-v1',
 
-            // ... (função createThumbnail) ...
             createThumbnail(imageBlob, width = 100, height = 100) {
                 return new Promise((resolve, reject) => {
                     const img = new Image();
@@ -577,7 +576,6 @@
                 this.switchView('player-view');
             },
 
-            // ... (outras funções init) ...
             registerServiceWorker() {
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('./sw.js')
@@ -667,7 +665,6 @@
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
             },
 
-            // ... (outras funções, como setupImageObserver, setupMediaSession, etc.) ...
             setupImageObserver() {
                 this.imageObserver = new IntersectionObserver((entries, observer) => {
                     entries.forEach(entry => {
@@ -771,7 +768,6 @@
                 }
             },
             
-            // ... (Funções da Cache API) ...
             _getAudioCache() {
                 return caches.open(this.CACHE_NAME);
             },
@@ -802,7 +798,6 @@
                 return await cache.match(key);
             },
 
-            // ALTERAÇÃO 2: Adicionado `showFeedback` para controlar notificações
             async toggleSongOfflineStatus(songIdToToggle = null, showFeedback = true) {
                 const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
@@ -850,7 +845,6 @@
                 }
             },
 
-            // ... (syncWithServerFolder, loadSong, etc.) ...
             rerenderCurrentList() {
                 const activeView = document.querySelector('.view.active');
                 if (!activeView) return;
@@ -882,39 +876,105 @@
                 this.switchView('player-view');
             },
 
-            async syncWithServerFolder(){try{const e=[
-                "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3",
-                "Musics/505(MP3_160K).mp3",
-                "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3",
-                "Musics/Art Deco.mp3",
-                "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3",
-                "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3",
-                "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3",
-                "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3",
-                "Musics/I Wanna Be Yours(MP3_160K).mp3",
-                "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3",
-                "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3",
-                "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3",
-                "Musics/Lied To(MP3_160K).mp3",
-                "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3",
-                "Musics/No. 1 Party Anthem(MP3_160K).mp3",
-                "Musics/Sweater Weather(MP3_160K).mp3",
-                "Musics/Your Rarest of Flowers(MP3_160K).mp3",
-                "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3",
-                "Musics/R U Mine_(MP3_160K).mp3",
-                "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3",
-                "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3",
-                "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3",
-                "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3",
-                "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3",
-                "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3",
-                "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3",
-                "Musics/Manchild(MP3_160K).mp3",
-                "Musics/I Love You_ I_m Sorry(MP3_160K).mp3",
-                "Musics/if u think i_m pretty(MP3_160K).mp3",
-                "Musics/Die For You(MP3_160K).mp3",
-                "Musics/Coming Down(MP3_160K).mp3"
-                ];let t=!1;const s=e,o=[...this.state.songs],i=o.map(e=>e.path);for(const a of s)if(!i.includes(a)){t=!0,console.log(`Lendo metadados de: ${a.split("/").pop()}`);const n=await this.readRemoteAudioMetadata(a);await this.saveSongMetadataToDB({...n,path:a,isOffline:!1})}const l=o.filter(t=>t.path&&!s.includes(t.path));if(l.length>0){console.log(`🗑️ Removendo ${l.length} músicas obsoletas do catálogo...`),t=!0;for(const c of l)console.log(`   - Deletando: ${c.title}`),await this.deleteSongFromDB(c.id)}t?(console.log("🎶 Catálogo sincronizado. Recarregando dados..."),await this.loadSongsFromDB(),await this.loadPlaylistsFromDB()):console.log("✅ Catálogo já está atualizado.")}catch(r){console.error("Erro ao sincronizar músicas do servidor:",r)}},
+            // =================================================================
+            // INÍCIO DO CÓDIGO OTIMIZADO
+            // =================================================================
+            async syncWithServerFolder() {
+                try {
+                    // Lista de músicas "do servidor".
+                    const serverSongPaths = [
+                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3",
+                        "Musics/505(MP3_160K).mp3",
+                        "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3",
+                        "Musics/Art Deco.mp3",
+                        "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3",
+                        "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3",
+                        "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3",
+                        "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3",
+                        "Musics/I Wanna Be Yours(MP3_160K).mp3",
+                        "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3",
+                        "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3",
+                        "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3",
+                        "Musics/Lied To(MP3_160K).mp3",
+                        "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3",
+                        "Musics/No. 1 Party Anthem(MP3_160K).mp3",
+                        "Musics/Sweater Weather(MP3_160K).mp3",
+                        "Musics/Your Rarest of Flowers(MP3_160K).mp3",
+                        "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3",
+                        "Musics/R U Mine_(MP3_160K).mp3",
+                        "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3",
+                        "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3",
+                        "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3",
+                        "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3",
+                        "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3",
+                        "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3",
+                        "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3",
+                        "Musics/Manchild(MP3_160K).mp3",
+                        "Musics/I Love You_ I_m Sorry(MP3_160K).mp3",
+                        "Musics/if u think i_m pretty(MP3_160K).mp3",
+                        "Musics/Die For You(MP3_160K).mp3",
+                        "Musics/Coming Down(MP3_160K).mp3"
+                    ];
+
+                    // Passo 1: Otimizar a busca por músicas existentes.
+                    // Usamos um Set para uma verificação de existência muito mais rápida (O(1) em vez de O(n)).
+                    const existingPaths = new Set(this.state.songs.map(song => song.path));
+                    const serverPathsSet = new Set(serverSongPaths);
+
+                    // Passo 2: Identificar todas as músicas novas e as que foram removidas.
+                    const newPaths = serverSongPaths.filter(path => !existingPaths.has(path));
+                    const pathsToRemove = this.state.songs.filter(song => song.path && !serverPathsSet.has(song.path));
+
+                    let hasChanges = false;
+
+                    // Passo 3: Processar todas as novas músicas em paralelo.
+                    if (newPaths.length > 0) {
+                        hasChanges = true;
+                        console.log(`🔎 Encontradas ${newPaths.length} novas músicas. Processando em paralelo...`);
+                        
+                        // Cria um array de "promessas". Cada promessa representa o trabalho de buscar e salvar uma música.
+                        const newSongsPromises = newPaths.map(async (path) => {
+                            const metadata = await this.readRemoteAudioMetadata(path);
+                            const songData = { ...metadata, path: path, isOffline: false };
+                            await this.saveSongMetadataToDB(songData);
+                        });
+
+                        // Promise.all espera que todas as promessas sejam concluídas.
+                        // Isso executa o download e processamento de várias músicas ao mesmo tempo.
+                        await Promise.all(newSongsPromises);
+                        console.log(`✅ ${newPaths.length} novas músicas adicionadas.`);
+                    }
+
+                    // Passo 4: Remover todas as músicas obsoletas em paralelo.
+                    if (pathsToRemove.length > 0) {
+                        hasChanges = true;
+                        console.log(`🗑️ Removendo ${pathsToRemove.length} músicas obsoletas em paralelo...`);
+
+                        // Da mesma forma, criamos um array de promessas para a exclusão.
+                        const deletePromises = pathsToRemove.map(song => this.deleteSongFromDB(song.id));
+
+                        await Promise.all(deletePromises);
+                        console.log(`✅ ${pathsToRemove.length} músicas obsoletas removidas.`);
+                    }
+
+                    // Passo 5: Atualizar o estado e a interface do usuário apenas uma vez no final, se houver mudanças.
+                    if (hasChanges) {
+                        console.log("🎶 Catálogo sincronizado. Recarregando dados...");
+                        await this.loadSongsFromDB(); // Carrega a lista de músicas atualizada do DB.
+                        await this.loadPlaylistsFromDB(); // Recarrega playlists para remover referências a músicas deletadas.
+                    } else {
+                        console.log("✅ Catálogo já está atualizado.");
+                    }
+
+                } catch (error) {
+                    console.error("Erro ao sincronizar músicas do servidor:", error);
+                    this.showToast('Erro ao sincronizar biblioteca.', 'error');
+                }
+            },
+            // =================================================================
+            // FIM DO CÓDIGO OTIMIZADO
+            // =================================================================
+
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
             
             async loadSong(e, t = !1, s = -1) {
@@ -997,9 +1057,7 @@
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
             
-            // ALTERAÇÃO 1: Função de notificação modificada para exibir apenas uma por vez.
             showToast(message, type = 'info', duration = 1500) {
-                // Limpa o timer e o conteúdo da notificação anterior, se houver
                 if (this.state.activeToastTimeout) {
                     clearTimeout(this.state.activeToastTimeout);
                 }
@@ -1025,13 +1083,12 @@
                 `;
                 this.dom.toastContainer.appendChild(toast);
 
-                // Define um novo timer para a notificação atual
                 this.state.activeToastTimeout = setTimeout(() => {
                     toast.classList.remove('toast-in');
                     toast.classList.add('toast-out');
                     toast.addEventListener('animationend', () => {
                         toast.remove();
-                        this.state.activeToastTimeout = null; // Limpa a referência ao timer
+                        this.state.activeToastTimeout = null;
                     });
                 }, duration);
             },
@@ -1124,7 +1181,6 @@
                 this.renderSongList(s, this.dom.playlistSongList, !0);
                 this.switchView("playlist-details-view");
             },
-            // ALTERAÇÃO 3: Lógica de download de playlist modificada para exibir uma única notificação no final.
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
@@ -1145,14 +1201,12 @@
                 this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
 
                 for (const song of songsToDownload) {
-                    // Chama a função sem mostrar feedback individual
                     await this.toggleSongOfflineStatus(song.id, false); 
                 }
 
                 btn.innerHTML = originalIcon;
                 btn.disabled = false;
 
-                // Mostra a notificação de sucesso apenas uma vez, no final.
                 this.showToast('Download da playlist concluído!', 'success');
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
@@ -1167,11 +1221,10 @@
                 }
             },
             
-            // ... (Funções do IndexedDB) ...
             db: null,
             async initDB() {
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open("SpobrefyDB", 4); // Versão 4 para garantir a limpeza
+                    const request = indexedDB.open("SpobrefyDB", 4); 
                     request.onerror = e => reject("Erro ao abrir o DB"),
                     request.onsuccess = e => {
                         this.db = e.target.result;
