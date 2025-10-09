@@ -998,7 +998,7 @@
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
             
             // NOVA FUNÇÃO
-            showToast(message, type = 'info', duration = 3000) {
+            showToast(message, type = 'info', duration = 500) {
                 const toast = document.createElement('div');
                 const icons = {
                     success: 'fa-check-circle',
