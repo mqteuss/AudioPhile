@@ -998,7 +998,7 @@
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
             
             // ALTERAÇÃO 1: Função de notificação modificada para exibir apenas uma por vez.
-            showToast(message, type = 'info', duration = 3000) {
+            showToast(message, type = 'info', duration = 1500) {
                 // Limpa o timer e o conteúdo da notificação anterior, se houver
                 if (this.state.activeToastTimeout) {
                     clearTimeout(this.state.activeToastTimeout);
