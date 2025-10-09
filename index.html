@@ -480,7 +480,6 @@
                 notificationModal: document.getElementById('notification-modal'),
                 notificationModalText: document.getElementById('notification-modal-text'),
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
-                // NOVO
                 toastContainer: document.getElementById('toast-container'),
             },
 
@@ -505,6 +504,7 @@
                 isPlaylistContextForOptions: false,
                 confirmationCallback: null,
                 playlistIdToEdit: null,
+                activeToastTimeout: null, // ALTERAÇÃO 1: Guarda a referência do timer da notificação ativa
             },
 
             audio: new Audio(),
@@ -752,7 +752,6 @@
                     playlist.songIds.push(songId);
                     await this.savePlaylistToDB(playlist);
                     await this.loadPlaylistsFromDB();
-                    // ALTERADO: Feedback com Toast
                     this.showToast(`Adicionado a "${playlist.name}"`, 'success');
                 }
                 this.showAddToPlaylistModal(false);
@@ -803,27 +802,28 @@
                 return await cache.match(key);
             },
 
-            async toggleSongOfflineStatus(songIdToToggle = null) {
+            // ALTERAÇÃO 2: Adicionado `showFeedback` para controlar notificações
+            async toggleSongOfflineStatus(songIdToToggle = null, showFeedback = true) {
                 const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song) return;
                 const download = async () => {
-                    this.showToast(`Baixando "${song.title}"...`, 'info', 2000);
+                    if (showFeedback) this.showToast(`Baixando "${song.title}"...`, 'info', 2000);
                     try {
                         if (song.path) {
                             await this._addSongToCacheFromPath(song);
                         } else {
                             console.warn("Tentativa de baixar música local sem um blob de origem.");
-                            this.showToast('Falha ao baixar música local.', 'error');
+                            if (showFeedback) this.showToast('Falha ao baixar música local.', 'error');
                             return false;
                         }
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
-                        this.showToast('Música disponível offline.', 'success');
+                        if (showFeedback) this.showToast('Música disponível offline.', 'success');
                         return true;
                     } catch (error) {
                         console.error("Erro no download para o cache:", error);
-                        this.showToast('Erro ao baixar música.', 'error');
+                        if (showFeedback) this.showToast('Erro ao baixar música.', 'error');
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
                         return false;
@@ -837,7 +837,7 @@
                             await this._removeSongFromCache(song);
                             song.isOffline = false;
                             await this.saveSongMetadataToDB(song);
-                            this.showToast('Música removida do offline.', 'info');
+                            if (showFeedback) this.showToast('Música removida do offline.', 'info');
                             this.rerenderCurrentList();
                         });
                     } else {
@@ -997,8 +997,14 @@
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
             
-            // NOVA FUNÇÃO
-            showToast(message, type = 'info', duration = 650) {
+            // ALTERAÇÃO 1: Função de notificação modificada para exibir apenas uma por vez.
+            showToast(message, type = 'info', duration = 3000) {
+                // Limpa o timer e o conteúdo da notificação anterior, se houver
+                if (this.state.activeToastTimeout) {
+                    clearTimeout(this.state.activeToastTimeout);
+                }
+                this.dom.toastContainer.innerHTML = '';
+
                 const toast = document.createElement('div');
                 const icons = {
                     success: 'fa-check-circle',
@@ -1018,11 +1024,14 @@
                     <span>${message}</span>
                 `;
                 this.dom.toastContainer.appendChild(toast);
-                setTimeout(() => {
+
+                // Define um novo timer para a notificação atual
+                this.state.activeToastTimeout = setTimeout(() => {
                     toast.classList.remove('toast-in');
                     toast.classList.add('toast-out');
                     toast.addEventListener('animationend', () => {
                         toast.remove();
+                        this.state.activeToastTimeout = null; // Limpa a referência ao timer
                     });
                 }, duration);
             },
@@ -1115,26 +1124,35 @@
                 this.renderSongList(s, this.dom.playlistSongList, !0);
                 this.switchView("playlist-details-view");
             },
+            // ALTERAÇÃO 3: Lógica de download de playlist modificada para exibir uma única notificação no final.
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
                 const songsToDownload = playlist.songIds
                     .map(id => this.state.songs.find(s => s.id === id))
                     .filter(song => song && !song.isOffline);
+
                 if (songsToDownload.length === 0) {
                     this.showToast('Todas as músicas já estão offline.', 'info');
                     return;
                 }
+
                 const btn = this.dom.playlistDownloadAllBtn;
                 const originalIcon = btn.innerHTML;
                 btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
                 btn.disabled = true;
+
                 this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
+
                 for (const song of songsToDownload) {
-                    await this.toggleSongOfflineStatus(song.id);
+                    // Chama a função sem mostrar feedback individual
+                    await this.toggleSongOfflineStatus(song.id, false); 
                 }
+
                 btn.innerHTML = originalIcon;
                 btn.disabled = false;
+
+                // Mostra a notificação de sucesso apenas uma vez, no final.
                 this.showToast('Download da playlist concluído!', 'success');
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
