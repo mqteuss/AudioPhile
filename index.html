@@ -213,6 +213,27 @@
         .song-item.playing .song-title {
             color: #1DB954;
         }
+
+        /* INÍCIO: ESTILOS PARA VIRTUALIZAÇÃO */
+        #virtual-list-container {
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+        }
+        #song-list {
+            position: relative;
+            width: 100%;
+            height: 100%; /* A altura será definida dinamicamente via JS */
+        }
+        #song-list .song-item {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 72px; /* Altura fixa para cada item (p-3 + h-12 = 24px + 48px) */
+        }
+        /* FIM: ESTILOS PARA VIRTUALIZAÇÃO */
+
     </style>
 </head>
 <body class="bg-black antialiased overflow-hidden" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
@@ -255,35 +276,36 @@
             </div>
         </div>
 
-        <div id="search-view" class="view pb-20">
-            <h1 class="text-3xl font-bold px-6 md:px-8 pt-6 md:pt-8 mb-4">Catálogo</h1>
-
-            <div class="sticky top-0 z-10 px-6 md:px-8 py-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-grow">
-                        <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+        <div id="search-view" class="view flex flex-col pb-20">
+            <div class="flex-shrink-0">
+                <h1 class="text-3xl font-bold px-6 md:px-8 pt-6 md:pt-8 mb-4">Catálogo</h1>
+                <div class="sticky top-0 z-10 px-6 md:px-8 py-3" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex-grow">
+                            <input type="text" id="search-input" placeholder="O que você quer ouvir?" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 pl-10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+                        </div>
+                        <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg">
+                            <i class="fas fa-folder-plus text-xl"></i>
+                        </button>
+                        <button id="sync-btn" title="Sincronizar Catálogo" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg disabled:opacity-50 disabled:cursor-wait">
+                            <i class="fas fa-sync text-lg"></i>
+                        </button>
                     </div>
-                    <button id="add-music-btn" title="Adicionar Pasta de Músicas" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg">
-                        <i class="fas fa-folder-plus text-xl"></i>
-                    </button>
-                    <button id="sync-btn" title="Sincronizar Catálogo" class="flex-shrink-0 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors w-10 h-10 flex items-center justify-center rounded-lg disabled:opacity-50 disabled:cursor-wait">
-                        <i class="fas fa-sync text-lg"></i>
-                    </button>
                 </div>
             </div>
 
-            <div class="px-6 md:px-8">
-                <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
+            <div class="flex-grow min-h-0 px-6 md:px-8 relative">
+                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16 absolute inset-0">
                     <i id="library-empty-icon" class="fas fa-music text-5xl mb-4"></i>
                     <h3 id="library-empty-title" class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
                     <p id="library-empty-text">Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
                 </div>
-                <ul id="song-list" class="space-y-1 mt-4"></ul>
+                <div id="virtual-list-container" class="w-full h-full">
+                    <ul id="song-list" class="space-y-1 mt-4"></ul>
+                </div>
             </div>
         </div>
-
-
         <div id="playlists-view" class="view p-6 md:p-8 pb-20">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
                <div id="playlist-grid" class="grid grid-cols-1 gap-4"></div>
@@ -501,10 +523,19 @@
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
                 toastContainer: document.getElementById('toast-container'),
                 addToPlaylistFromPlayerBtn: document.getElementById('add-to-playlist-from-player-btn'),
+                // INÍCIO: ELEMENTO PARA VIRTUALIZAÇÃO
+                virtualListContainer: document.getElementById('virtual-list-container'),
+                // FIM: ELEMENTO PARA VIRTUALIZAÇÃO
             },
 
             state: {
                 songs: [],
+                // INÍCIO: ESTADO PARA VIRTUALIZAÇÃO
+                filteredSongs: [],
+                SONG_ITEM_HEIGHT: 72, // Altura fixa de cada item da lista em pixels
+                virtualListScrollTop: 0,
+                isScrolling: false,
+                // FIM: ESTADO PARA VIRTUALIZAÇÃO
                 playlists: [],
                 currentSongIndex: -1,
                 isPlaying: false,
@@ -673,7 +704,12 @@
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
+                
+                // INÍCIO: MODIFICAÇÃO NO EVENTO DE CLIQUE DA LISTA
+                // Usa o array filtrado como fonte de dados
+                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.filteredSongs, false));
+                // FIM: MODIFICAÇÃO
+                
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                     if(playlist) {
@@ -685,6 +721,18 @@
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
                 this.dom.addToPlaylistFromPlayerBtn.addEventListener('click', () => this.handleAddToPlaylistFromPlayer());
+
+                // INÍCIO: EVENTO DE SCROLL PARA A VIRTUALIZAÇÃO
+                this.dom.virtualListContainer.addEventListener('scroll', () => {
+                    if (!this.state.isScrolling) {
+                        window.requestAnimationFrame(() => {
+                            this.renderSongList();
+                            this.state.isScrolling = false;
+                        });
+                        this.state.isScrolling = true;
+                    }
+                });
+                // FIM: EVENTO DE SCROLL
             },
 
             handleAddToPlaylistFromPlayer() {
@@ -761,6 +809,10 @@
                 const songItem = event.target.closest('.song-item');
                 if (!songItem) return;
                 const songId = parseInt(songItem.dataset.songId);
+                // INÍCIO: MODIFICAÇÃO PARA O CONTEXTO DA LISTA
+                // A fonte de músicas (songSourceList) agora é passada como argumento
+                // para garantir que a fila de reprodução seja criada a partir da lista
+                // correta (completa ou filtrada).
                 if (event.target.closest('.options-btn')) {
                     this.state.songIdForOptions = songId;
                     this.state.isPlaylistContextForOptions = isPlaylistContext;
@@ -774,6 +826,7 @@
                         this.switchView('player-view');
                     }
                 }
+                // FIM: MODIFICAÇÃO
             },
             
             async addSongToPlaylist(playlistId) {
@@ -1077,21 +1130,27 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
+            // INÍCIO: FUNÇÃO DE FILTRO MODIFICADA
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
-                let visibleCount = 0;
-                this.dom.songList.querySelectorAll(".song-item").forEach(item => {
-                    const title = item.querySelector(".song-title").textContent.toLowerCase();
-                    const artist = item.querySelector(".song-artist").textContent.toLowerCase();
-                    const isVisible = title.includes(searchTerm) || artist.includes(searchTerm);
-                    item.style.display = isVisible ? "flex" : "none";
-                    if (isVisible) {
-                        visibleCount++;
-                    }
-                });
-
+                
+                if (!searchTerm) {
+                    this.state.filteredSongs = [...this.state.songs];
+                } else {
+                    this.state.filteredSongs = this.state.songs.filter(song => {
+                        const title = song.title.toLowerCase();
+                        const artist = (song.artist || '').toLowerCase();
+                        return title.includes(searchTerm) || artist.includes(searchTerm);
+                    });
+                }
+                
+                // Reseta o scroll para o topo ao filtrar
+                this.dom.virtualListContainer.scrollTop = 0;
+                // Renderiza a lista com os dados filtrados
+                this.renderSongList();
+                
                 const isSearching = searchTerm.length > 0;
-                const noResults = isSearching && visibleCount === 0;
+                const noResults = isSearching && this.state.filteredSongs.length === 0;
 
                 this.dom.libraryEmptyState.classList.toggle('hidden', !noResults);
 
@@ -1100,14 +1159,14 @@
                     this.dom.libraryEmptyTitle.textContent = 'Nenhum resultado encontrado';
                     this.dom.libraryEmptyText.textContent = 'Tente buscar por outro termo.';
                 } else {
-                    // Restaura o estado original se a busca for limpa
                     this.dom.libraryEmptyIcon.className = 'fas fa-music text-5xl mb-4';
                     this.dom.libraryEmptyTitle.textContent = 'Sua biblioteca está vazia';
                     this.dom.libraryEmptyText.innerHTML = 'Use o botão <i class="fas fa-folder-plus"></i> para começar.';
-                    // Esconde se a biblioteca não estiver vazia
+                    // Esconde se a biblioteca não estiver vazia (baseado na lista original)
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
             },
+            // FIM: FUNÇÃO DE FILTRO MODIFICADA
             
             showToast(message, type = 'info', duration = 1500) {
                 if (this.state.activeToastTimeout) {
@@ -1226,8 +1285,10 @@
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
+                // A renderização da lista de músicas da playlist continua normal (não virtualizada).
+                // Se necessário, a mesma técnica pode ser aplicada aqui.
                 if (songCount > 0) {
-                    this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
+                    this.renderNonVirtualSongList(songsInPlaylist, this.dom.playlistSongList, true);
                 }
 
                 this.switchView("playlist-details-view");
@@ -1263,15 +1324,17 @@
             },
 
             updatePlayingSongUI(playingSongId) {
+                // Remove a classe de todos os itens visíveis
                 document.querySelectorAll('.song-item').forEach(item => {
                     item.classList.remove('playing');
                 });
                 if (playingSongId === null || playingSongId === undefined) return;
                 
-                const currentSongItems = document.querySelectorAll(`.song-item[data-song-id="${playingSongId}"]`);
-                currentSongItems.forEach(item => {
-                    item.classList.add('playing');
-                });
+                // Adiciona a classe apenas ao item visível que está tocando
+                const currentSongItem = document.querySelector(`.song-item[data-song-id="${playingSongId}"]`);
+                if (currentSongItem) {
+                    currentSongItem.classList.add('playing');
+                }
             },
             
             db: null,
@@ -1380,12 +1443,116 @@
                 });
             },
 
-            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result;this.renderSongList();this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);e(this.state.songs)},i.onerror=t})},
+            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result; this.state.filteredSongs=[...this.state.songs]; this.renderSongList(); e(this.state.songs)},i.onerror=t})},
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
-            renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})(),this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id)},
+
+            // INÍCIO: FUNÇÃO DE RENDERIZAÇÃO VIRTUALIZADA
+            renderSongList() {
+                const songSource = this.state.filteredSongs;
+                const container = this.dom.virtualListContainer;
+                const list = this.dom.songList;
+                const itemHeight = this.state.SONG_ITEM_HEIGHT;
+                
+                // Esconde a lista e mostra o estado de vazio se não houver músicas
+                const hasSongs = songSource.length > 0;
+                container.classList.toggle('hidden', !hasSongs);
+                this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0 || this.dom.searchInput.value.length > 0);
+
+                if (!hasSongs) {
+                    list.innerHTML = '';
+                    list.style.height = '0px';
+                    return;
+                }
+
+                // Define a altura total do elemento interno para que a barra de rolagem funcione
+                const totalHeight = songSource.length * itemHeight;
+                list.style.height = `${totalHeight}px`;
+
+                // Calcula os itens que devem ser visíveis
+                const scrollTop = container.scrollTop;
+                const visibleHeight = container.offsetHeight;
+                const buffer = 5; // Renderiza alguns itens a mais para suavizar o scroll
+
+                let startIndex = Math.floor(scrollTop / itemHeight);
+                let endIndex = Math.ceil((scrollTop + visibleHeight) / itemHeight);
+
+                startIndex = Math.max(0, startIndex - buffer);
+                endIndex = Math.min(songSource.length, endIndex + buffer);
+                
+                const visibleSongs = songSource.slice(startIndex, endIndex);
+
+                const fragment = document.createDocumentFragment();
+                const playingSongId = this.state.songs[this.state.currentSongIndex]?.id;
+                
+                this.cleanupObjectURLs(list); // Limpa URLs antigos
+
+                visibleSongs.forEach((song, i) => {
+                    const clone = this.dom.songItemTemplate.content.cloneNode(true);
+                    const item = clone.querySelector('.song-item');
+                    const cover = clone.querySelector('.song-cover');
+
+                    item.dataset.songId = song.id;
+                    // Define a posição vertical exata de cada item
+                    item.style.transform = `translateY(${(startIndex + i) * itemHeight}px)`;
+
+                    if (song.coverBlob) {
+                        cover.setAttribute('data-src', URL.createObjectURL(song.coverBlob));
+                    } else {
+                        cover.setAttribute('data-src', 'https://placehold.co/100x100/27272a/3f3f46?text=?');
+                    }
+                    this.imageObserver.observe(cover);
+
+                    clone.querySelector('.song-title').textContent = song.title;
+                    clone.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                    clone.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
+                    
+                    if (song.id === playingSongId) {
+                        item.classList.add('playing');
+                    }
+
+                    fragment.appendChild(clone);
+                });
+
+                list.innerHTML = '';
+                list.appendChild(fragment);
+            },
+            // FIM: FUNÇÃO DE RENDERIZAÇÃO VIRTUALIZADA
+
+            // Criei uma cópia da função de renderização original para ser usada em listas não-virtualizadas como a da playlist.
+            renderNonVirtualSongList(songs = this.state.songs, targetElement = this.dom.songList, isPlaylistContext = false) {
+                this.cleanupObjectURLs(targetElement);
+                targetElement.innerHTML = "";
+
+                if (songs.length > 0) {
+                    const fragment = document.createDocumentFragment();
+                    const playingSongId = this.state.songs[this.state.currentSongIndex]?.id;
+                    songs.forEach(song => {
+                        const clone = this.dom.songItemTemplate.content.cloneNode(true);
+                        const item = clone.querySelector(".song-item");
+                        const cover = clone.querySelector(".song-cover");
+                        item.dataset.songId = song.id;
+                        if (song.coverBlob) {
+                            cover.setAttribute("data-src", URL.createObjectURL(song.coverBlob));
+                        } else {
+                            cover.setAttribute("data-src", "https://placehold.co/100x100/27272a/3f3f46?text=?");
+                        }
+                        this.imageObserver.observe(cover);
+                        clone.querySelector(".song-title").textContent = song.title;
+                        clone.querySelector(".song-artist").textContent = song.artist || "Artista Desconhecido";
+                        clone.querySelector(".offline-indicator").classList.toggle("hidden", !song.isOffline);
+                        
+                        if (song.id === playingSongId) {
+                           item.classList.add('playing');
+                        }
+                        fragment.appendChild(clone);
+                    });
+                    targetElement.appendChild(fragment);
+                }
+            },
+
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
