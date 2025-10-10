@@ -409,7 +409,9 @@
     <template id="playlist-item-template">
         <div class="playlist-item-grid-entry group flex items-center justify-between gap-4 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-800/80 transition-colors">
             <div class="playlist-clickable-area flex-grow flex items-center gap-4 cursor-pointer">
-                <img class="playlist-cover w-16 h-16 rounded-md object-cover" src="https://placehold.co/100x100/101010/1DB954?text=PLAY" alt="Capa da Playlist" loading="lazy">
+                <div class="playlist-cover w-16 h-16 rounded-md bg-zinc-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    <i class="fas fa-music text-3xl text-zinc-600"></i>
+                </div>
                 <div>
                     <p class="playlist-name font-semibold"></p>
                     <p class="playlist-song-count text-sm text-zinc-400"></p>
@@ -812,9 +814,6 @@
                 return await cache.match(key);
             },
             
-            // =================================================================
-            // INÍCIO DO CÓDIGO MODIFICADO
-            // =================================================================
             async toggleSongOfflineStatus(songIdToToggle = null, showFeedback = true) {
                 const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
@@ -881,9 +880,6 @@
                     song.isOffline ? this.dom.optionsDownloadBtn.classList.add("text-red-500") : this.dom.optionsDownloadBtn.classList.remove("text-red-500");
                 }
             },
-            // =================================================================
-            // FIM DO CÓDIGO MODIFICADO
-            // =================================================================
 
             playPlaylist(shuffle = false) {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
@@ -1195,10 +1191,6 @@
 
                 this.switchView("playlist-details-view");
             },
-
-            // =================================================================
-            // INÍCIO DO CÓDIGO MODIFICADO
-            // =================================================================
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
@@ -1227,10 +1219,6 @@
 
                 this.showToast('Download da playlist concluído!', 'success');
             },
-            // =================================================================
-            // FIM DO CÓDIGO MODIFICADO
-            // =================================================================
-
             updatePlayingSongUI(playingSongId) {
                 document.querySelectorAll('.song-item').forEach(item => {
                     item.classList.remove('playing');
@@ -1355,7 +1343,50 @@
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})(),this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id)},
-            renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
+            
+            // =================================================================
+            // INÍCIO DA MODIFICAÇÃO: Lógica da Colagem de Capas
+            // =================================================================
+            renderPlaylistGrid() {
+                this.cleanupObjectURLs(this.dom.playlistGrid);
+                this.dom.playlistGrid.innerHTML = "";
+                const fragment = document.createDocumentFragment();
+                this.state.playlists.forEach(playlist => {
+                    const templateNode = this.dom.playlistItemTemplate.content.cloneNode(true);
+                    const gridEntry = templateNode.querySelector(".playlist-item-grid-entry");
+                    const coverContainer = templateNode.querySelector(".playlist-cover");
+
+                    gridEntry.dataset.id = playlist.id;
+                    templateNode.querySelector(".playlist-name").textContent = playlist.name;
+                    templateNode.querySelector(".playlist-song-count").textContent = `${playlist.songIds.length} música${playlist.songIds.length !== 1 ? "s" : ""}`;
+
+                    const coverSongs = playlist.songIds
+                        .map(id => this.state.songs.find(s => s.id === id))
+                        .filter(song => song && song.coverBlob)
+                        .slice(0, 4);
+
+                    if (coverSongs.length > 0) {
+                        coverContainer.innerHTML = ''; // Remove o ícone de placeholder
+                        coverContainer.classList.add('grid', 'grid-cols-2', 'grid-rows-2');
+                        coverContainer.classList.remove('flex', 'items-center', 'justify-center');
+
+                        coverSongs.forEach(song => {
+                            const img = document.createElement('img');
+                            img.src = URL.createObjectURL(song.coverBlob);
+                            img.className = 'w-full h-full object-cover';
+                            img.loading = 'lazy';
+                            coverContainer.appendChild(img);
+                        });
+                    }
+                    
+                    fragment.appendChild(templateNode);
+                });
+                this.dom.playlistGrid.appendChild(fragment);
+            },
+            // =================================================================
+            // FIM DA MODIFICAÇÃO
+            // =================================================================
+            
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
                 const songId = this.state.songIdForOptions;
