@@ -631,7 +631,7 @@
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
                 playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
-                playlistEmptyState: document.getElementById('playlist-empty-state'), // Mapeado
+                playlistEmptyState: document.getElementById('playlist-empty-state'),
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -826,14 +826,22 @@
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, VirtualScroller.get('song-list').config.data, false));
+                
+                // --- CÓDIGO CORRIGIDO ---
+                this.dom.songList.addEventListener('click', e => {
+                    const scroller = VirtualScroller.get('song-list');
+                    const songs = scroller ? scroller.config.data : this.state.songs;
+                    this.handleSongListClick(e, songs, false);
+                });
+
                 this.dom.playlistSongList.addEventListener('click', e => {
-                    const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                    if(playlist) {
-                        const songs = VirtualScroller.get('playlist-song-list').config.data;
-                        this.handleSongListClick(e, songs, true);
+                    const scroller = VirtualScroller.get('playlist-song-list');
+                    if (scroller) {
+                        this.handleSongListClick(e, scroller.config.data, true);
                     }
                 });
+                // --- FIM DA CORREÇÃO ---
+
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
@@ -1077,13 +1085,11 @@
                 this.dom.syncBtn.disabled = true;
 
                 try {
-                    // MODIFICAÇÃO: Carrega a lista de músicas de um arquivo JSON externo.
                     const response = await fetch('./musics-manifest.json');
                     if (!response.ok) {
                         throw new Error(`Falha ao buscar o manifesto de músicas: ${response.statusText}`);
                     }
                     const serverSongPaths = await response.json();
-                    // FIM DA MODIFICAÇÃO
 
                     const existingPaths = new Set(this.state.songs.map(song => song.path));
                     const serverPathsSet = new Set(serverSongPaths);
@@ -1258,7 +1264,6 @@
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
 
-                // Update virtual scroller with filtered data
                 const scroller = VirtualScroller.get('song-list');
                 if (scroller) {
                     scroller.setData(filteredSongs);
@@ -1566,7 +1571,7 @@
                 }
 
                 this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
-                    itemHeight: 64 + 4, // 64px item height + 4px gap (from space-y-1)
+                    itemHeight: 64 + 4,
                     buffer: 10,
                     data: songs,
                     renderItem: (song, index) => {
@@ -1596,7 +1601,6 @@
                     }
                 });
                 
-                // Update playing state on the newly rendered list
                 this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
             },
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
