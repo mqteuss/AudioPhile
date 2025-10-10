@@ -273,15 +273,19 @@
                 </div>
             </div>
 
-            <div class="px-6 md:px-8">
+            <div class="px-6 md:px-8 mt-4">
                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
                     <i id="library-empty-icon" class="fas fa-music text-5xl mb-4"></i>
                     <h3 id="library-empty-title" class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
                     <p id="library-empty-text">Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
                 </div>
-                <ul id="song-list" class="space-y-1 mt-4"></ul>
+
+                <div id="virtual-list-container" class="relative hidden" style="height: calc(100vh - 220px);"> <div id="virtual-list-sizer" class="relative w-full">
+                        <ul id="song-list" class="absolute top-0 left-0 w-full"></ul>
+                    </div>
+                </div>
             </div>
-        </div>
+            </div>
 
 
         <div id="playlists-view" class="view p-6 md:p-8 pb-20">
@@ -394,8 +398,7 @@
     </div>
 
     <template id="song-item-template">
-        <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors">
-            <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
+        <li class="song-item group flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800/80 transition-colors" style="height: 76px;"> <div class="clickable-area flex-grow min-w-0 flex items-center gap-3 cursor-pointer">
                 <div class="relative w-12 h-12 flex-shrink-0">
                     <div class="song-number-container"></div>
                     <img class="song-cover w-full h-full rounded-md object-cover" src="https://placehold.co/100x100/27272a/3f3f46?text=?" alt="Capa" loading="lazy">
@@ -482,7 +485,7 @@
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
                 playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
-                playlistEmptyState: document.getElementById('playlist-empty-state'), // Mapeado
+                playlistEmptyState: document.getElementById('playlist-empty-state'), 
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -501,10 +504,14 @@
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
                 toastContainer: document.getElementById('toast-container'),
                 addToPlaylistFromPlayerBtn: document.getElementById('add-to-playlist-from-player-btn'),
+                // ===== NOVOS ELEMENTOS DO DOM PARA VIRTUALIZAÇÃO =====
+                virtualListContainer: document.getElementById('virtual-list-container'),
+                virtualListSizer: document.getElementById('virtual-list-sizer'),
             },
 
             state: {
                 songs: [],
+                filteredSongs: [], // Para a busca
                 playlists: [],
                 currentSongIndex: -1,
                 isPlaying: false,
@@ -525,6 +532,11 @@
                 confirmationCallback: null,
                 playlistIdToEdit: null,
                 activeToastTimeout: null, 
+                // ===== NOVOS ESTADOS PARA VIRTUALIZAÇÃO =====
+                itemHeight: 76, // Altura de cada item da lista em pixels. Ajuste se o CSS mudar.
+                visibleItems: [], // Armazenará as músicas que estão visíveis no momento
+                renderedStartIndex: -1, // Para evitar re-renderizações desnecessárias
+                renderedEndIndex: -1,
             },
 
             audio: new Audio(),
@@ -673,7 +685,10 @@
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
+                
+                // ===== ALTERAÇÃO DE EVENTO: Agora o clique é na lista VIRTUAL =====
+                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.filteredSongs, false));
+
                 this.dom.playlistSongList.addEventListener('click', e => {
                     const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                     if(playlist) {
@@ -685,6 +700,10 @@
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
                 this.dom.addToPlaylistFromPlayerBtn.addEventListener('click', () => this.handleAddToPlaylistFromPlayer());
+
+                // ===== NOVO EVENTO PARA ROLAGEM VIRTUAL =====
+                this.dom.virtualListContainer.addEventListener('scroll', () => this.renderVirtualList());
+                window.addEventListener('resize', () => this.renderVirtualList(true)); // Re-renderizar em caso de redimensionamento
             },
 
             handleAddToPlaylistFromPlayer() {
@@ -795,7 +814,7 @@
                     this.showConfirmationModal(`Remover "${this.state.songs.find(s => s.id === songId).title}" da playlist?`, async () => {
                         playlist.songIds = playlist.songIds.filter(id => id !== songId);
                         await this.savePlaylistToDB(playlist);
-                        this.showPlaylistDetails(this.state.currentPlaylistId);
+                        this.showPlaylistDetails(this.state.currentPlaylistId); // Re-renderiza a view de detalhes da playlist
                         await this.loadPlaylistsFromDB();
                         this.showToast('Música removida da playlist.', 'success');
                     });
@@ -1024,7 +1043,6 @@
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
             changeTrack(e){const t=this.state.playQueue.length>0?this.state.playQueue:this.state.songs;if(t.length!==0){let s;const o=this.state.currentQueueIndex;if(this.state.isShuffle)do{s=Math.floor(Math.random()*t.length)}while(t.length>1&&s===o);else s=e==="next"?(o+1)%t.length:(o-1+t.length)%t.length;const i=t[s],a=this.state.songs.findIndex(e=>e.id===i.id);this.loadSong(a,!0,s)}},
             
-            // ========== INÍCIO DA CORREÇÃO ==========
             handleSongEnd() {
                 if (this.state.repeatMode === 'one') {
                     this.audio.currentTime = 0;
@@ -1043,7 +1061,6 @@
                     this.changeTrack('next');
                 }
             },
-            // ========== FIM DA CORREÇÃO ==========
 
             handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
             savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
@@ -1075,36 +1092,40 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
+            // ===== FUNÇÃO DE BUSCA REESCRITA PARA VIRTUALIZAÇÃO =====
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
-                let visibleCount = 0;
-                this.dom.songList.querySelectorAll(".song-item").forEach(item => {
-                    const title = item.querySelector(".song-title").textContent.toLowerCase();
-                    const artist = item.querySelector(".song-artist").textContent.toLowerCase();
-                    const isVisible = title.includes(searchTerm) || artist.includes(searchTerm);
-                    item.style.display = isVisible ? "flex" : "none";
-                    if (isVisible) {
-                        visibleCount++;
-                    }
-                });
-
+                
+                if (!searchTerm) {
+                    this.state.filteredSongs = [...this.state.songs];
+                } else {
+                    this.state.filteredSongs = this.state.songs.filter(song => {
+                        const title = song.title.toLowerCase();
+                        const artist = (song.artist || '').toLowerCase();
+                        return title.includes(searchTerm) || artist.includes(searchTerm);
+                    });
+                }
+                
+                // Atualiza estado de vazio com base nos resultados da busca
+                const hasResults = this.state.filteredSongs.length > 0;
                 const isSearching = searchTerm.length > 0;
-                const noResults = isSearching && visibleCount === 0;
 
-                this.dom.libraryEmptyState.classList.toggle('hidden', !noResults);
-
-                if (noResults) {
+                this.dom.virtualListContainer.classList.toggle('hidden', !hasResults);
+                this.dom.libraryEmptyState.classList.toggle('hidden', hasResults);
+                
+                if (!hasResults && isSearching) {
                     this.dom.libraryEmptyIcon.className = 'fas fa-search text-5xl mb-4';
                     this.dom.libraryEmptyTitle.textContent = 'Nenhum resultado encontrado';
                     this.dom.libraryEmptyText.textContent = 'Tente buscar por outro termo.';
                 } else {
-                    // Restaura o estado original se a busca for limpa
+                     // Restaura o estado de vazio original
                     this.dom.libraryEmptyIcon.className = 'fas fa-music text-5xl mb-4';
                     this.dom.libraryEmptyTitle.textContent = 'Sua biblioteca está vazia';
                     this.dom.libraryEmptyText.innerHTML = 'Use o botão <i class="fas fa-folder-plus"></i> para começar.';
-                    // Esconde se a biblioteca não estiver vazia
-                    this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
+
+                // Re-renderiza a lista virtual com os resultados filtrados
+                this.renderVirtualList(true);
             },
             
             showToast(message, type = 'info', duration = 1500) {
@@ -1225,7 +1246,8 @@
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
                 if (songCount > 0) {
-                    this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
+                    // A lista de detalhes da playlist continua usando a renderização normal
+                    this.renderPlaylistSongDetails(songsInPlaylist);
                 }
 
                 this.switchView("playlist-details-view");
@@ -1378,13 +1400,150 @@
                 });
             },
 
-            async loadSongsFromDB(){return this.db||await this.initDB(),new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();i.onsuccess=t=>{this.state.songs=t.target.result;this.renderSongList();this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);e(this.state.songs)},i.onerror=t})},
+            async loadSongsFromDB(){
+                return new Promise((resolve, reject)=>{
+                    const transaction = this.db.transaction(["songs"],"readonly");
+                    const store = transaction.objectStore("songs");
+                    const request = store.getAll();
+                    
+                    request.onsuccess = (event) => {
+                        this.state.songs = event.target.result;
+                        this.state.filteredSongs = [...this.state.songs]; // Inicia a lista filtrada
+
+                        this.dom.libraryEmptyState.classList.toggle("hidden", this.state.songs.length > 0);
+                        this.dom.virtualListContainer.classList.toggle("hidden", this.state.songs.length === 0);
+
+                        this.renderVirtualList(true); // Chama a renderização virtual
+                        
+                        const playingSong = this.state.songs[this.state.currentSongIndex];
+                        if (playingSong) {
+                           this.updatePlayingSongUI(playingSong.id);
+                        }
+
+                        resolve(this.state.songs);
+                    };
+                    request.onerror = (event) => reject(event);
+                });
+            },
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
-            renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})(),this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id)},
+            
+            // ===== NOVAS FUNÇÕES DE RENDERIZAÇÃO VIRTUAL =====
+
+            /**
+             * Ponto de entrada para a renderização da lista.
+             * Prepara o sizer e chama a renderização da janela visível.
+             * @param {boolean} force - Força a re-renderização completa.
+             */
+            renderVirtualList(force = false) {
+                const songSource = this.state.filteredSongs; // Usa a lista filtrada
+                const container = this.dom.virtualListContainer;
+                
+                const totalHeight = songSource.length * this.state.itemHeight;
+                this.dom.virtualListSizer.style.height = `${totalHeight}px`;
+
+                const scrollTop = container.scrollTop;
+                const containerHeight = container.clientHeight;
+                
+                const buffer = 5; 
+                let startIndex = Math.floor(scrollTop / this.state.itemHeight);
+                let endIndex = Math.ceil((scrollTop + containerHeight) / this.state.itemHeight);
+                
+                startIndex = Math.max(0, startIndex - buffer);
+                endIndex = Math.min(songSource.length, endIndex + buffer);
+
+                if (!force && startIndex === this.state.renderedStartIndex && endIndex === this.state.renderedEndIndex) {
+                    return;
+                }
+                
+                this.state.renderedStartIndex = startIndex;
+                this.state.renderedEndIndex = endIndex;
+                
+                this.state.visibleItems = songSource.slice(startIndex, endIndex);
+
+                this.renderVisibleItems(startIndex);
+            },
+
+            /**
+             * Renderiza efetivamente os itens visíveis no DOM.
+             * @param {number} startIndex - O índice inicial da lista de onde os itens visíveis começam.
+             */
+            renderVisibleItems(startIndex) {
+                const list = this.dom.songList;
+                const items = this.state.visibleItems;
+                
+                this.cleanupObjectURLs(list);
+                const fragment = document.createDocumentFragment();
+
+                items.forEach(song => {
+                    const templateNode = this.dom.songItemTemplate.content.cloneNode(true);
+                    const itemEl = templateNode.querySelector(".song-item");
+                    const coverEl = templateNode.querySelector(".song-cover");
+                    
+                    itemEl.dataset.songId = song.id;
+                    
+                    if (song.coverBlob) {
+                        coverEl.setAttribute("data-src", URL.createObjectURL(song.coverBlob));
+                    } else {
+                        coverEl.setAttribute("data-src", "https://placehold.co/100x100/27272a/3f3f46?text=?");
+                    }
+                    this.imageObserver.observe(coverEl);
+                    
+                    templateNode.querySelector(".song-title").textContent = song.title;
+                    templateNode.querySelector(".song-artist").textContent = song.artist || "Artista Desconhecido";
+                    templateNode.querySelector(".offline-indicator").classList.toggle("hidden", !song.isOffline);
+
+                    fragment.appendChild(templateNode);
+                });
+
+                list.innerHTML = ''; 
+                list.appendChild(fragment);
+
+                const topOffset = startIndex * this.state.itemHeight;
+                list.style.transform = `translateY(${topOffset}px)`;
+                
+                const playingSong = this.state.songs[this.state.currentSongIndex];
+                if (playingSong) {
+                    this.updatePlayingSongUI(playingSong.id);
+                }
+            },
+
+            // Função para renderizar a lista de musicas na tela de detalhes da playlist (sem virtualização)
+            renderPlaylistSongDetails(songs) {
+                const target = this.dom.playlistSongList;
+                this.cleanupObjectURLs(target);
+                target.innerHTML = "";
+                const fragment = document.createDocumentFragment();
+                songs.forEach(song => {
+                    const templateNode = this.dom.songItemTemplate.content.cloneNode(true);
+                    const itemEl = templateNode.querySelector('.song-item');
+                    const coverEl = templateNode.querySelector('.song-cover');
+                    
+                    itemEl.dataset.songId = song.id;
+                    if (song.coverBlob) {
+                        coverEl.setAttribute('data-src', URL.createObjectURL(song.coverBlob));
+                    } else {
+                        coverEl.setAttribute('data-src', 'https://placehold.co/100x100/27272a/3f3f46?text=?');
+                    }
+                    this.imageObserver.observe(coverEl);
+                    
+                    templateNode.querySelector('.song-title').textContent = song.title;
+                    templateNode.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                    templateNode.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
+                    fragment.appendChild(templateNode);
+                });
+                target.appendChild(fragment);
+
+                const playingSong = this.state.songs[this.state.currentSongIndex];
+                if (playingSong) {
+                    this.updatePlayingSongUI(playingSong.id);
+                }
+            },
+
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
+            
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
                 const songId = this.state.songIdForOptions;
