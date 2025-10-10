@@ -512,7 +512,7 @@
 
             state: {
                 songs: [],
-                displayedSongs: [], // NOVO: Músicas a serem exibidas (pode ser a lista completa ou filtrada)
+                displayedSongs: [],
                 playlists: [],
                 currentSongIndex: -1,
                 isPlaying: false,
@@ -533,7 +533,7 @@
                 confirmationCallback: null,
                 playlistIdToEdit: null,
                 activeToastTimeout: null, 
-                virtualizer: null, // NOVO: Instância do virtualizer
+                virtualizer: null,
             },
 
             audio: new Audio(),
@@ -590,16 +590,13 @@
                 });
             },
 
-            // =================================================================
-            // CORREÇÃO: Ordem de inicialização ajustada
-            // =================================================================
             async init() {
                 this.registerServiceWorker();
                 await this.initDB();
                 this.setupImageObserver();
                 this.bindEvents();
                 this.setupMediaSession();
-                this.setupVirtualizer(); // CORREÇÃO: Movidopara ANTES de carregar as músicas
+                this.setupVirtualizer();
                 await this.loadSongsFromDB();
                 await this.loadPlaylistsFromDB();
                 await this.syncWithServerFolder();
@@ -967,32 +964,26 @@
 
                     if (newPaths.length > 0) {
                         hasChanges = true;
-                        console.log(`🔎 Encontradas ${newPaths.length} novas músicas. Processando em paralelo...`);
                         const newSongsPromises = newPaths.map(async (path) => {
                             const metadata = await this.readRemoteAudioMetadata(path);
                             const songData = { ...metadata, path: path, isOffline: false };
                             await this.saveSongMetadataToDB(songData);
                         });
                         await Promise.all(newSongsPromises);
-                        console.log(`✅ ${newPaths.length} novas músicas adicionadas.`);
                     }
 
                     if (pathsToRemove.length > 0) {
                         hasChanges = true;
-                        console.log(`🗑️ Removendo ${pathsToRemove.length} músicas obsoletas em paralelo...`);
                         const deletePromises = pathsToRemove.map(song => this.deleteSongFromDB(song.id));
                         await Promise.all(deletePromises);
-                        console.log(`✅ ${pathsToRemove.length} músicas obsoletas removidas.`);
                     }
                     
                     if (hasChanges) {
                         this.showToast('Catálogo sincronizado!', 'success');
-                        console.log("🎶 Catálogo sincronizado. Recarregando dados...");
                         await this.loadSongsFromDB();
                         await this.loadPlaylistsFromDB();
                     } else {
                         this.showToast('Catálogo já está atualizado.', 'info');
-                        console.log("✅ Catálogo já está atualizado.");
                     }
 
                 } catch (error) {
@@ -1013,16 +1004,15 @@
                     this.state.currentQueueIndex = s;
                     try {
                         if (o.isOffline) {
-                            console.log(`▶️ Tocando offline (do cache): ${o.title}`);
                             const response = await this._getSongFromCache(o);
                             if (response) {
                                 const dataBlob = await response.blob();
                                 this.state.currentObjectUrl = URL.createObjectURL(dataBlob);
                                 this.audio.src = this.state.currentObjectUrl;
                             } else {
-                                console.warn("Dado offline não encontrado no cache, fazendo streaming."), this.audio.src = o.path
+                                this.audio.src = o.path
                             }
-                        } else console.log(`▶️ Tocando online (streaming): ${o.title}`), this.audio.src = o.path
+                        } else this.audio.src = o.path
                     } catch (l) {
                         return void console.error("Erro ao carregar áudio: ", l)
                     }
@@ -1076,7 +1066,7 @@
 
             handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
             savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
-            async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(console.log(`Restaurando estado: Música ID ${t.songId} no tempo ${this.formatTime(t.currentTime)}`),this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
+            async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
             seek(e){this.audio.duration&&(this.audio.currentTime=e/100*this.audio.duration,this.dom.progressBar.style.setProperty("--progress-percent",`${e}%`))},
             updatePlayerUI(e) {
                 this.dom.trackTitle.textContent = e.title || "Título Desconhecido";
@@ -1366,7 +1356,6 @@
                                 });
                             },
                             onError: (o) => {
-                                console.warn("Erro ao ler metadados:", o);
                                 resolve({
                                     title: e.name.replace(/\.[^/.]+$/, ""),
                                     artist: "Artista Desconhecido", album: null, coverBlob: null, artworkBlob: null, duration: s.duration
@@ -1397,34 +1386,31 @@
                 });
             },
 
+            // =================================================================
+            // CORREÇÃO: Função agora reaplica o filtro de busca existente
+            // =================================================================
             async loadSongsFromDB(){
                 return new Promise((resolve,reject)=>{
                     const transaction=this.db.transaction(["songs"],"readonly"), store=transaction.objectStore("songs"), request=store.getAll();
                     request.onsuccess = (event) => {
                         this.state.songs = event.target.result;
-                        this.state.displayedSongs = [...this.state.songs]; 
-                        
-                        if(this.state.virtualizer) {
-                             this.state.virtualizer.setOptions({
-                                ...this.state.virtualizer.options,
-                                count: this.state.displayedSongs.length
-                            });
-                            this.renderSongList(this.state.displayedSongs);
-                        }
 
+                        // CORREÇÃO: Em vez de resetar a lista, reaplica o filtro atual
+                        this.filterSongList(this.dom.searchInput.value);
+                        
                         this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
                         resolve(this.state.songs);
                     };
                     request.onerror = reject;
                 });
             },
+
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             
             renderSongList(songsToRender = [], targetElement = this.dom.songListContent, isPlaylistContext = false, useVirtualization = true) {
-                // Lógica para listas não virtualizadas (ex: detalhes da playlist)
                 if (!useVirtualization) {
                     targetElement.innerHTML = "";
                     this.cleanupObjectURLs(targetElement);
@@ -1438,7 +1424,6 @@
                     return;
                 }
                 
-                // Lógica principal para a lista virtualizada do catálogo
                 if (!this.state.virtualizer) return;
                 
                 const virtualItems = this.state.virtualizer.getVirtualItems();
