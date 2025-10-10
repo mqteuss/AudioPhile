@@ -1474,7 +1474,7 @@
                 // Calcula os itens que devem ser visíveis
                 const scrollTop = container.scrollTop;
                 const visibleHeight = container.offsetHeight;
-                const buffer = 5; // Renderiza alguns itens a mais para suavizar o scroll
+                const buffer = 20; // Renderiza alguns itens a mais para suavizar o scroll
 
                 let startIndex = Math.floor(scrollTop / itemHeight);
                 let endIndex = Math.ceil((scrollTop + visibleHeight) / itemHeight);
