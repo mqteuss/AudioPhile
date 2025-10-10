@@ -209,8 +209,8 @@
             opacity: 1;
         }
 
-        /* Destaque para música tocando na lista de busca */
-        #song-list .song-item.playing .song-title {
+        /* Destaque para música tocando em QUALQUER lista */
+        .song-item.playing .song-title {
             color: #1DB954;
         }
     </style>
@@ -306,7 +306,13 @@
                     </button>
                 </div>
                  </div>
-            <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
+            <ul id="playlist-song-list" class="space-y-1 mt-4">
+                <div id="playlist-empty-state" class="text-center text-zinc-500 mt-16 hidden">
+                    <i class="fas fa-compact-disc text-5xl mb-4"></i>
+                    <h3 class="text-xl font-semibold text-white mb-2">Playlist Vazia</h3>
+                    <p>Adicione músicas do seu catálogo a esta playlist.</p>
+                </div>
+            </ul>
         </div>
     </main>
 
@@ -1072,7 +1078,30 @@
             updateRepeatButtonUI(){this.dom.repeatBtn.classList.remove("text-green-500","repeat-mode-one"),"all"===this.state.repeatMode?this.dom.repeatBtn.classList.add("text-green-500"):"one"===this.state.repeatMode&&this.dom.repeatBtn.classList.add("text-green-500","repeat-mode-one")},
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
-            filterSongList(e){const t=e.toLowerCase().trim();this.dom.songList.querySelectorAll(".song-item").forEach(s=>{const o=s.querySelector(".song-title").textContent.toLowerCase(),i=s.querySelector(".song-artist").textContent.toLowerCase();s.style.display=o.includes(t)||i.includes(t)?"flex":"none"})},
+            
+            // ALTERAÇÃO 2B: Lógica da função de filtro/busca
+            filterSongList(value) {
+                const searchTerm = value.toLowerCase().trim();
+                let visibleCount = 0;
+                this.dom.songList.querySelectorAll(".song-item").forEach(item => {
+                    const title = item.querySelector(".song-title").textContent.toLowerCase();
+                    const artist = item.querySelector(".song-artist").textContent.toLowerCase();
+                    const isVisible = title.includes(searchTerm) || artist.includes(searchTerm);
+                    item.style.display = isVisible ? "flex" : "none";
+                    if (isVisible) visibleCount++;
+                });
+
+                const emptyState = this.dom.libraryEmptyState;
+                const songsExist = this.state.songs.length > 0;
+                const noResults = songsExist && visibleCount === 0;
+
+                emptyState.classList.toggle('hidden', !noResults);
+
+                if (noResults) {
+                    emptyState.querySelector('h3').textContent = 'Nenhum resultado encontrado';
+                    emptyState.querySelector('p').textContent = `Tente buscar por outro termo.`;
+                }
+            },
             
             showToast(message, type = 'info', duration = 1500) {
                 if (this.state.activeToastTimeout) {
@@ -1175,6 +1204,7 @@
                     await this.loadPlaylistsFromDB();
                 })
             },
+            // ALTERAÇÃO 2A: Lógica na função showPlaylistDetails
             showPlaylistDetails(e) {
                 this.state.currentPlaylistId = e;
                 const t = this.state.playlists.find(t => t.id === e);
@@ -1185,6 +1215,10 @@
                     i = s.reduce((e, t) => e + (t.duration || 0), 0),
                     a = Math.floor(i / 60);
                 this.dom.playlistDetailsMeta.textContent = `${o} música${o!==1?"s":""}, aprox. ${a} min`;
+                
+                const emptyState = this.dom.playlistSongList.querySelector('#playlist-empty-state');
+                emptyState.classList.toggle('hidden', o > 0);
+
                 const n = s[0];
                 const highResCover = n ? (n.artworkBlob || n.coverBlob) : null;
                 if (highResCover) {
@@ -1227,15 +1261,18 @@
                 this.showToast('Download da playlist concluído!', 'success');
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
+
+            // ALTERAÇÃO 1: Função updatePlayingSongUI atualizada
             updatePlayingSongUI(playingSongId) {
-                this.dom.songList.querySelectorAll('.song-item').forEach(item => {
+                const allSongItems = document.querySelectorAll('#song-list .song-item, #playlist-song-list .song-item');
+                
+                allSongItems.forEach(item => {
                     item.classList.remove('playing');
+
+                    if (playingSongId !== null && playingSongId !== undefined && parseInt(item.dataset.songId) === playingSongId) {
+                        item.classList.add('playing');
+                    }
                 });
-                if (playingSongId === null || playingSongId === undefined) return;
-                const currentSongItem = this.dom.songList.querySelector(`.song-item[data-song-id="${playingSongId}"]`);
-                if (currentSongItem) {
-                    currentSongItem.classList.add('playing');
-                }
             },
             
             db: null,
