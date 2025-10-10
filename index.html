@@ -209,7 +209,7 @@
             opacity: 1;
         }
 
-        /* Destaque para música tocando em QUALQUER lista */
+        /* Destaque genérico para música tocando */
         .song-item.playing .song-title {
             color: #1DB954;
         }
@@ -269,9 +269,9 @@
 
             <div class="px-6 md:px-8">
                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16">
-                    <i class="fas fa-music text-5xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
-                    <p>Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
+                    <i id="library-empty-icon" class="fas fa-music text-5xl mb-4"></i>
+                    <h3 id="library-empty-title" class="text-xl font-semibold text-white mb-2">Sua biblioteca está vazia</h3>
+                    <p id="library-empty-text">Use o botão <i class="fas fa-folder-plus"></i> para começar.</p>
                 </div>
                 <ul id="song-list" class="space-y-1 mt-4"></ul>
             </div>
@@ -305,14 +305,13 @@
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
-                 </div>
-            <ul id="playlist-song-list" class="space-y-1 mt-4">
-                <div id="playlist-empty-state" class="text-center text-zinc-500 mt-16 hidden">
-                    <i class="fas fa-compact-disc text-5xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-white mb-2">Playlist Vazia</h3>
-                    <p>Adicione músicas do seu catálogo a esta playlist.</p>
-                </div>
-            </ul>
+             </div>
+             <div id="playlist-empty-state" class="text-center text-zinc-500 mt-10 hidden">
+                <i class="fas fa-compact-disc text-5xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-white mb-2">Esta playlist está vazia</h3>
+                <p>Adicione músicas do seu catálogo para começar.</p>
+            </div>
+            <ul id="playlist-song-list" class="space-y-1 mt-4"></ul>
         </div>
     </main>
 
@@ -445,11 +444,13 @@
                 navButtons: document.querySelectorAll('.nav-btn'),
                 views: document.querySelectorAll('.view'),
                 addMusicBtn: document.getElementById('add-music-btn'),
-                // BOTÃO DE SINCRONIZAÇÃO MAPEADO
                 syncBtn: document.getElementById('sync-btn'),
                 musicFolderInput: document.getElementById('music-folder-input'),
                 songList: document.getElementById('song-list'),
                 libraryEmptyState: document.getElementById('library-empty-state'),
+                libraryEmptyIcon: document.getElementById('library-empty-icon'),
+                libraryEmptyTitle: document.getElementById('library-empty-title'),
+                libraryEmptyText: document.getElementById('library-empty-text'),
                 songItemTemplate: document.getElementById('song-item-template'),
                 searchInput: document.getElementById('search-input'),
                 playlistGrid: document.getElementById('playlist-grid'),
@@ -475,6 +476,7 @@
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
                 playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
+                playlistEmptyState: document.getElementById('playlist-empty-state'), // Mapeado
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -625,7 +627,6 @@
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
                 window.addEventListener('beforeunload', () => this.savePlaybackState());
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
-                // EVENTO DE CLIQUE ADICIONADO AO BOTÃO DE SINCRONIZAÇÃO
                 this.dom.syncBtn.addEventListener('click', () => this.syncWithServerFolder());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
                 this.dom.searchInput.addEventListener('input', this.debounce(e => this.filterSongList(e.target.value), 250));
@@ -889,10 +890,6 @@
                 this.switchView('player-view');
             },
 
-            // =================================================================
-            // INÍCIO DO CÓDIGO OTIMIZADO
-            // =================================================================
-            // FUNÇÃO MODIFICADA PARA INDICADOR VISUAL
             async syncWithServerFolder() {
                 const syncIcon = this.dom.syncBtn.querySelector('i');
                 syncIcon.classList.add('fa-spin');
@@ -900,53 +897,7 @@
 
                 try {
                     const serverSongPaths = [
-                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3",
-                        "Musics/505(MP3_160K).mp3",
-                        "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3",
-                        "Musics/Art Deco.mp3",
-                        "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3",
-                        "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3",
-                        "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3",
-                        "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3",
-                        "Musics/I Wanna Be Yours(MP3_160K).mp3",
-                        "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3",
-                        "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3",
-                        "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3",
-                        "Musics/Lied To(MP3_160K).mp3",
-                        "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3",
-                        "Musics/No. 1 Party Anthem(MP3_160K).mp3",
-                        "Musics/Sweater Weather(MP3_160K).mp3",
-                        "Musics/Your Rarest of Flowers(MP3_160K).mp3",
-                        "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3",
-                        "Musics/R U Mine_(MP3_160K).mp3",
-                        "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3",
-                        "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3",
-                        "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3",
-                        "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3",
-                        "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3",
-                        "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3",
-                        "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3",
-                        "Musics/Manchild(MP3_160K).mp3",
-                        "Musics/I Love You_ I_m Sorry(MP3_160K).mp3",
-                        "Musics/if u think i_m pretty(MP3_160K).mp3",
-                        "Musics/Die For You(MP3_160K).mp3",
-                        "Musics/Coming Down(MP3_160K).mp3", 
-                        "Musics/Camila Cabello - Never Be the Same (Audio)(MP3_160K).mp3",
-                        "Musics/Chase Atlantic - FRIENDS (Official Lyric Video)(MP3_160K).mp3",
-                        "Musics/CLOVES - Don_t Forget About Me(MP3_160K).mp3",
-                        "Musics/Dark Red(MP3_160K).mp3",
-                        "Musics/Doja Cat - Freak (Official Audio)(MP3_160K).mp3",
-                        "Musics/Don Toliver - No Idea [Official Music Video](MP3_160K).mp3",
-                        "Musics/Him _ I(MP3_160K).mp3",
-                        "Musics/I_m Not The Only One(MP3_160K).mp3",
-                        "Musics/K(MP3_160K).mp3",
-                        "Musics/Lady Gaga_ Bradley Cooper - Shallow (from A Star Is Born) (Official Music Video)(MP3_160K).mp3",
-                        "Musics/Maroon 5 - Maps (Audio)(MP3_160K).mp3",
-                        "Musics/Shut up My Moms Calling(MP3_160K).mp3",
-                        "Musics/Skank - Sutilmente (Clipe Oficial)(MP3_160K).mp3",
-                        "Musics/Video Games(MP3_160K).mp3", 
-                        "Musics/Disillusioned(MP3_160K).mp3", 
-                        "Musics/Transform (feat. Charlotte Day Wilson)(MP3_160K).mp3"
+                        "Musics/Arctic Monkeys - Arabella (Official Audio)(MP3_160K).mp3", "Musics/505(MP3_160K).mp3", "Musics/Arctic Monkeys - Do I Wanna Know_ (Official Video)(MP3_160K).mp3", "Musics/Art Deco.mp3", "Musics/Bruno Mars - It Will Rain (Official Music Video)(MP3_160K).mp3", "Musics/GIVĒON - Heartbreak Anniversary (Audio)(MP3_160K).mp3", "Musics/GIVĒON - Make You Mine (Official Lyric Video)(MP3_160K).mp3", "Musics/Get You (feat. Kali Uchis)(MP3_160K).mp3", "Musics/I Wanna Be Yours(MP3_160K).mp3", "Musics/Imogen Heap - Headlock (Official Video)(MP3_160K).mp3", "Musics/LEOWOLF - Romantic Gangster(MP3_160K).mp3", "Musics/Lady Gaga_ Bruno Mars - Die With A Smile (Official Music Video)(MP3_160K).mp3", "Musics/Lied To(MP3_160K).mp3", "Musics/Matt Maeson - Put It on Me(MP3_160K).mp3", "Musics/No. 1 Party Anthem(MP3_160K).mp3", "Musics/Sweater Weather(MP3_160K).mp3", "Musics/Your Rarest of Flowers(MP3_160K).mp3", "Musics/See You Again (Clean) - Tyler_ The Creator_Kali Uchis(MP3_160K).mp3", "Musics/R U Mine_(MP3_160K).mp3", "Musics/Coldplay - Yellow (Official Video)(MP3_160K).mp3", "Musics/Goo Goo Dolls – Iris [Official Music Video] [4K Remaster](MP3_160K).mp3", "Musics/James Blunt - Goodbye My Lover (Official Music Video) [4K](MP3_160K).mp3", "Musics/James Blunt - Same Mistake (Official Music Video)(MP3_160K).mp3", "Musics/James Blunt - You_re Beautiful (Official Music Video) [4K](MP3_160K).mp3", "Musics/Olivia Rodrigo - favorite crime (Lyric Video)(MP3_160K).mp3", "Musics/Olivia Rodrigo - happier (Lyric Video)(MP3_160K).mp3", "Musics/Manchild(MP3_160K).mp3", "Musics/I Love You_ I_m Sorry(MP3_160K).mp3", "Musics/if u think i_m pretty(MP3_160K).mp3", "Musics/Die For You(MP3_160K).mp3", "Musics/Coming Down(MP3_160K).mp3", "Musics/Camila Cabello - Never Be the Same (Audio)(MP3_160K).mp3", "Musics/Chase Atlantic - FRIENDS (Official Lyric Video)(MP3_160K).mp3", "Musics/CLOVES - Don_t Forget About Me(MP3_160K).mp3", "Musics/Dark Red(MP3_160K).mp3", "Musics/Doja Cat - Freak (Official Audio)(MP3_160K).mp3", "Musics/Don Toliver - No Idea [Official Music Video](MP3_160K).mp3", "Musics/Him _ I(MP3_160K).mp3", "Musics/I_m Not The Only One(MP3_160K).mp3", "Musics/K(MP3_160K).mp3", "Musics/Lady Gaga_ Bradley Cooper - Shallow (from A Star Is Born) (Official Music Video)(MP3_160K).mp3", "Musics/Maroon 5 - Maps (Audio)(MP3_160K).mp3", "Musics/Shut up My Moms Calling(MP3_160K).mp3", "Musics/Skank - Sutilmente (Clipe Oficial)(MP3_160K).mp3", "Musics/Video Games(MP3_160K).mp3", "Musics/Disillusioned(MP3_160K).mp3", "Musics/Transform (feat. Charlotte Day Wilson)(MP3_160K).mp3"
                     ];
 
                     const existingPaths = new Set(this.state.songs.map(song => song.path));
@@ -989,14 +940,10 @@
                     console.error("Erro ao sincronizar músicas do servidor:", error);
                     this.showToast('Erro ao sincronizar biblioteca.', 'error');
                 } finally {
-                    // BLOCO FINALLY PARA GARANTIR QUE A ANIMAÇÃO PARE
                     syncIcon.classList.remove('fa-spin');
                     this.dom.syncBtn.disabled = false;
                 }
             },
-            // =================================================================
-            // FIM DO CÓDIGO OTIMIZADO
-            // =================================================================
 
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
             
@@ -1079,27 +1026,38 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
-            // ALTERAÇÃO 2B: Lógica da função de filtro/busca
-            filterSongList(value) {
-                const searchTerm = value.toLowerCase().trim();
+            // =================================================================
+            // INÍCIO DO CÓDIGO MODIFICADO
+            // =================================================================
+            filterSongList(query) {
+                const searchTerm = query.toLowerCase().trim();
                 let visibleCount = 0;
                 this.dom.songList.querySelectorAll(".song-item").forEach(item => {
                     const title = item.querySelector(".song-title").textContent.toLowerCase();
                     const artist = item.querySelector(".song-artist").textContent.toLowerCase();
                     const isVisible = title.includes(searchTerm) || artist.includes(searchTerm);
                     item.style.display = isVisible ? "flex" : "none";
-                    if (isVisible) visibleCount++;
+                    if (isVisible) {
+                        visibleCount++;
+                    }
                 });
 
-                const emptyState = this.dom.libraryEmptyState;
-                const songsExist = this.state.songs.length > 0;
-                const noResults = songsExist && visibleCount === 0;
+                const isSearching = searchTerm.length > 0;
+                const noResults = isSearching && visibleCount === 0;
 
-                emptyState.classList.toggle('hidden', !noResults);
+                this.dom.libraryEmptyState.classList.toggle('hidden', !noResults);
 
                 if (noResults) {
-                    emptyState.querySelector('h3').textContent = 'Nenhum resultado encontrado';
-                    emptyState.querySelector('p').textContent = `Tente buscar por outro termo.`;
+                    this.dom.libraryEmptyIcon.className = 'fas fa-search text-5xl mb-4';
+                    this.dom.libraryEmptyTitle.textContent = 'Nenhum resultado encontrado';
+                    this.dom.libraryEmptyText.textContent = 'Tente buscar por outro termo.';
+                } else {
+                    // Restaura o estado original se a busca for limpa
+                    this.dom.libraryEmptyIcon.className = 'fas fa-music text-5xl mb-4';
+                    this.dom.libraryEmptyTitle.textContent = 'Sua biblioteca está vazia';
+                    this.dom.libraryEmptyText.innerHTML = 'Use o botão <i class="fas fa-folder-plus"></i> para começar.';
+                    // Esconde se a biblioteca não estiver vazia
+                    this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
             },
             
@@ -1110,23 +1068,12 @@
                 this.dom.toastContainer.innerHTML = '';
 
                 const toast = document.createElement('div');
-                const icons = {
-                    success: 'fa-check-circle',
-                    error: 'fa-times-circle',
-                    info: 'fa-info-circle',
-                };
-                const colors = {
-                    success: 'bg-green-500',
-                    error: 'bg-red-500',
-                    info: 'bg-zinc-700',
-                };
+                const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', };
+                const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-zinc-700', };
                 const iconClass = icons[type] || icons['info'];
                 const colorClass = colors[type] || colors['info'];
                 toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colorClass} toast-in`;
-                toast.innerHTML = `
-                    <i class="fas ${iconClass} text-lg"></i>
-                    <span>${message}</span>
-                `;
+                toast.innerHTML = `<i class="fas ${iconClass} text-lg"></i><span>${message}</span>`;
                 this.dom.toastContainer.appendChild(toast);
 
                 this.state.activeToastTimeout = setTimeout(() => {
@@ -1204,23 +1151,21 @@
                     await this.loadPlaylistsFromDB();
                 })
             },
-            // ALTERAÇÃO 2A: Lógica na função showPlaylistDetails
-            showPlaylistDetails(e) {
-                this.state.currentPlaylistId = e;
-                const t = this.state.playlists.find(t => t.id === e);
-                if (!t) return;
-                this.dom.playlistDetailsTitle.textContent = t.name;
-                const s = this.state.songs.filter(e => t.songIds.includes(e.id)),
-                    o = s.length,
-                    i = s.reduce((e, t) => e + (t.duration || 0), 0),
-                    a = Math.floor(i / 60);
-                this.dom.playlistDetailsMeta.textContent = `${o} música${o!==1?"s":""}, aprox. ${a} min`;
-                
-                const emptyState = this.dom.playlistSongList.querySelector('#playlist-empty-state');
-                emptyState.classList.toggle('hidden', o > 0);
+            showPlaylistDetails(playlistId) {
+                this.state.currentPlaylistId = playlistId;
+                const playlist = this.state.playlists.find(p => p.id === playlistId);
+                if (!playlist) return;
 
-                const n = s[0];
-                const highResCover = n ? (n.artworkBlob || n.coverBlob) : null;
+                this.dom.playlistDetailsTitle.textContent = playlist.name;
+                const songsInPlaylist = this.state.songs.filter(s => playlist.songIds.includes(s.id));
+                const songCount = songsInPlaylist.length;
+                const totalDuration = songsInPlaylist.reduce((acc, song) => acc + (song.duration || 0), 0);
+                const totalMinutes = Math.floor(totalDuration / 60);
+
+                this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${totalMinutes} min`;
+
+                const firstSong = songsInPlaylist[0];
+                const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
                 if (highResCover) {
                     this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
                     this.dom.playlistDetailsCoverImg.classList.remove("hidden");
@@ -1229,7 +1174,14 @@
                     this.dom.playlistDetailsCoverImg.classList.add("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
                 }
-                this.renderSongList(s, this.dom.playlistSongList, !0);
+
+                this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
+                this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
+                
+                if (songCount > 0) {
+                    this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
+                }
+
                 this.switchView("playlist-details-view");
             },
             async downloadPlaylist() {
@@ -1261,19 +1213,20 @@
                 this.showToast('Download da playlist concluído!', 'success');
                 this.showPlaylistDetails(this.state.currentPlaylistId);
             },
-
-            // ALTERAÇÃO 1: Função updatePlayingSongUI atualizada
             updatePlayingSongUI(playingSongId) {
-                const allSongItems = document.querySelectorAll('#song-list .song-item, #playlist-song-list .song-item');
-                
-                allSongItems.forEach(item => {
+                document.querySelectorAll('.song-item').forEach(item => {
                     item.classList.remove('playing');
-
-                    if (playingSongId !== null && playingSongId !== undefined && parseInt(item.dataset.songId) === playingSongId) {
-                        item.classList.add('playing');
-                    }
+                });
+                if (playingSongId === null || playingSongId === undefined) return;
+                
+                const currentSongItems = document.querySelectorAll(`.song-item[data-song-id="${playingSongId}"]`);
+                currentSongItems.forEach(item => {
+                    item.classList.add('playing');
                 });
             },
+            // =================================================================
+            // FIM DO CÓDIGO MODIFICADO
+            // =================================================================
             
             db: null,
             async initDB() {
@@ -1386,7 +1339,7 @@
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
-            renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})()},
+            renderSongList(e=this.state.songs,t=this.dom.songList,s=!1){this.cleanupObjectURLs(t),t.innerHTML="",t===this.dom.songList&&this.dom.libraryEmptyState.classList.toggle("hidden",this.state.songs.length>0),e.length>0&&(()=>{const s=document.createDocumentFragment();e.forEach(e=>{const o=this.dom.songItemTemplate.content.cloneNode(!0),i=o.querySelector(".song-item"),a=o.querySelector(".song-cover");i.dataset.songId=e.id,e.coverBlob?a.setAttribute("data-src",URL.createObjectURL(e.coverBlob)):a.setAttribute("data-src","https://placehold.co/100x100/27272a/3f3f46?text=?"),this.imageObserver.observe(a),o.querySelector(".song-title").textContent=e.title,o.querySelector(".song-artist").textContent=e.artist||"Artista Desconhecido",o.querySelector(".offline-indicator").classList.toggle("hidden",!e.isOffline),s.appendChild(o)}),t.appendChild(s)})(),this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id)},
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
