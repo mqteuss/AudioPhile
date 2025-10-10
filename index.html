@@ -591,7 +591,7 @@
             },
 
             // =================================================================
-            // ALTERAÇÃO PRINCIPAL: INIT E SETUP DO VIRTUALIZER
+            // CORREÇÃO: Ordem de inicialização ajustada
             // =================================================================
             async init() {
                 this.registerServiceWorker();
@@ -599,8 +599,8 @@
                 this.setupImageObserver();
                 this.bindEvents();
                 this.setupMediaSession();
+                this.setupVirtualizer(); // CORREÇÃO: Movidopara ANTES de carregar as músicas
                 await this.loadSongsFromDB();
-                this.setupVirtualizer(); // NOVO: Inicia o virtualizer
                 await this.loadPlaylistsFromDB();
                 await this.syncWithServerFolder();
                 await this.loadPlaybackState();
@@ -613,17 +613,10 @@
                 this.state.virtualizer = new TanStackVirtual.Virtualizer({
                     count: this.state.displayedSongs.length,
                     getScrollElement: () => this.dom.songListContainer,
-                    estimateSize: () => 68, // Altura estimada de cada item: p-3 (24px) + h-12 (48px) = 72px. 68 é um bom chute.
-                    overscan: 10, // Renderiza 10 itens extras acima/abaixo da área visível para rolagem suave.
-                    observeElementRect: (instance, cb) => {
-                       // Opcional: para tamanhos dinâmicos, mas não necessário aqui.
-                    },
-                    observeElementOffset: (instance, cb) => {
-                       // Opcional: para tamanhos dinâmicos, mas não necessário aqui.
-                    }
+                    estimateSize: () => 68, 
+                    overscan: 10,
                 });
                 
-                // NOVO: A renderização agora é acionada pela rolagem
                 this.dom.songListContainer.addEventListener('scroll', () => {
                     this.renderSongList(this.state.displayedSongs);
                 });
@@ -707,7 +700,6 @@
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
                 
-                // ALTERADO: O Event Listener agora é no container
                 this.dom.songListContent.addEventListener('click', e => this.handleSongListClick(e, this.state.displayedSongs, false));
 
                 this.dom.playlistSongList.addEventListener('click', e => {
@@ -1112,9 +1104,6 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
-            // =================================================================
-            // ALTERAÇÃO PRINCIPAL: BUSCA FILTRA OS DADOS, NÃO O DOM
-            // =================================================================
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
                 
@@ -1128,13 +1117,12 @@
                     });
                 }
                 
-                // Atualiza o virtualizer com a nova contagem de itens
                 this.state.virtualizer.setOptions({
                     ...this.state.virtualizer.options,
                     count: this.state.displayedSongs.length,
                 });
                 
-                // Rerenderiza a lista com os dados filtrados
+                this.dom.songListContainer.scrollTop = 0;
                 this.renderSongList(this.state.displayedSongs);
             },
             
@@ -1255,9 +1243,8 @@
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
-                // TODO: A lista de detalhes da playlist também poderia ser virtualizada
                 if (songCount > 0) {
-                     this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true, false); // Não virtualiza aqui por enquanto
+                     this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true, false); 
                 }
 
                 this.switchView("playlist-details-view");
@@ -1411,57 +1398,53 @@
             },
 
             async loadSongsFromDB(){
-                return new Promise((e,t)=>{
-                    const s=this.db.transaction(["songs"],"readonly"),o=s.objectStore("songs"),i=o.getAll();
-                    i.onsuccess=t=>{
-                        this.state.songs=t.target.result;
-                        this.state.displayedSongs = [...this.state.songs]; // Popula a lista de exibição
+                return new Promise((resolve,reject)=>{
+                    const transaction=this.db.transaction(["songs"],"readonly"), store=transaction.objectStore("songs"), request=store.getAll();
+                    request.onsuccess = (event) => {
+                        this.state.songs = event.target.result;
+                        this.state.displayedSongs = [...this.state.songs]; 
                         
-                        // A renderização inicial agora é chamada aqui
                         if(this.state.virtualizer) {
-                            this.state.virtualizer.setOptions({
+                             this.state.virtualizer.setOptions({
                                 ...this.state.virtualizer.options,
                                 count: this.state.displayedSongs.length
                             });
                             this.renderSongList(this.state.displayedSongs);
-                        } else {
-                            this.renderSongList(this.state.displayedSongs); // Chamada para o caso de não ter virtualizer ainda
                         }
 
                         this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
-                        e(this.state.songs)
-                    },
-                    i.onerror=t
-                })
+                        resolve(this.state.songs);
+                    };
+                    request.onerror = reject;
+                });
             },
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.put(e);a.onsuccess=t,a.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img").forEach(e=>{e.src.startsWith("blob:")&&(URL.revokeObjectURL(e.src),e.src="https://placehold.co/100x100/27272a/3f3f46?text=?")})},
             
-            // =================================================================
-            // ALTERAÇÃO PRINCIPAL: RENDERIZAÇÃO USA O VIRTUALIZER
-            // =================================================================
             renderSongList(songsToRender = [], targetElement = this.dom.songListContent, isPlaylistContext = false, useVirtualization = true) {
+                // Lógica para listas não virtualizadas (ex: detalhes da playlist)
                 if (!useVirtualization) {
-                    // Lógica antiga para listas não virtualizadas (ex: detalhes da playlist)
                     targetElement.innerHTML = "";
+                    this.cleanupObjectURLs(targetElement);
                     const fragment = document.createDocumentFragment();
                     songsToRender.forEach(song => {
                        const node = this.createSongNode(song);
                        fragment.appendChild(node);
                     });
                     targetElement.appendChild(fragment);
+                    this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
                     return;
                 }
-
+                
+                // Lógica principal para a lista virtualizada do catálogo
                 if (!this.state.virtualizer) return;
                 
                 const virtualItems = this.state.virtualizer.getVirtualItems();
                 
                 this.dom.libraryEmptyState.classList.toggle("hidden", songsToRender.length > 0);
                 
-                // Limpa o conteúdo e define a altura total
                 this.dom.songListContent.innerHTML = '';
                 this.dom.songListContent.style.height = `${this.state.virtualizer.getTotalSize()}px`;
 
@@ -1471,7 +1454,6 @@
                     if(!song) return;
 
                     const node = this.createSongNode(song);
-                    // Aplica os estilos de posicionamento do virtualizer
                     node.style.position = 'absolute';
                     node.style.top = '0';
                     node.style.left = '0';
