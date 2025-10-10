@@ -531,6 +531,7 @@
                 isScrolling: false,
                 virtualListNodes: [],
                 isVirtualListInitialized: false,
+                imageCache: {}, // Cache para as imagens
                 playlists: [],
                 currentSongIndex: -1,
                 isPlaying: false,
@@ -624,9 +625,7 @@
 
             registerServiceWorker() {
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(reg => console.log('Service Worker: Registrado'))
-                        .catch(err => console.log(`Service Worker: Erro: ${err}`));
+                    navigator.serviceWorker.register('./sw.js').catch(err => {});
                 }
             },
             
@@ -745,6 +744,15 @@
                             const src = img.getAttribute('data-src');
                             if (src) {
                                 img.src = src;
+                                const songItem = img.closest('.song-item');
+                                if (songItem) {
+                                    const songId = songItem.dataset.songId;
+                                    // Adiciona a imagem ao cache DEPOIS que ela for carregada
+                                    img.onload = () => {
+                                        this.state.imageCache[songId] = src;
+                                        img.onload = null; // Remove o listener para evitar execuções múltiplas
+                                    };
+                                }
                             }
                         }
                     });
@@ -779,18 +787,11 @@
                     const currentIndex = this.state.viewOrder.indexOf(activeView.id);
                     if (currentIndex === -1) return;
                     let nextIndex;
-                    if (swipeDistance < 0) {
-                        nextIndex = Math.min(currentIndex + 1, this.state.viewOrder.length - 1);
-                    } else {
-                        nextIndex = Math.max(currentIndex - 1, 0);
-                    }
-                    if (nextIndex !== currentIndex) {
-                        const nextViewId = this.state.viewOrder[nextIndex];
-                        this.switchView(nextViewId);
-                    }
+                    if (swipeDistance < 0) nextIndex = Math.min(currentIndex + 1, this.state.viewOrder.length - 1);
+                    else nextIndex = Math.max(currentIndex - 1, 0);
+                    if (nextIndex !== currentIndex) this.switchView(this.state.viewOrder[nextIndex]);
                 }
-                this.state.touchStartX = 0;
-                this.state.touchEndX = 0;
+                this.state.touchStartX = 0; this.state.touchEndX = 0;
             },
 
             handleSongListClick(event, songSourceList, isPlaylistContext = false) {
@@ -807,9 +808,7 @@
                     const queueIndex = this.state.playQueue.findIndex(s => s.id === songId);
                     const globalIndex = this.state.songs.findIndex(s => s.id === songId);
                     this.loadSong(globalIndex, true, queueIndex);
-                    if (isPlaylistContext) {
-                        this.switchView('player-view');
-                    }
+                    if (isPlaylistContext) this.switchView('player-view');
                 }
             },
             
@@ -834,7 +833,7 @@
                         await this.savePlaylistToDB(playlist);
                         this.showPlaylistDetails(this.state.currentPlaylistId);
                         await this.loadPlaylistsFromDB();
-                        this.showToast('Música removida da playlist.', 'success');
+                        this.showToast('Música removida.', 'success');
                     });
                 }
             },
@@ -844,25 +843,22 @@
             async _addSongToCache(song, blob) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
-                const response = new Response(blob);
-                await cache.put(key, response);
+                await cache.put(key, new Response(blob));
             },
             async _addSongToCacheFromPath(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
                 const response = await fetch(key);
-                if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
+                if (!response.ok) throw new Error(`Falha ao baixar: ${response.statusText}`);
                 await cache.put(key, response);
             },
             async _removeSongFromCache(song) {
                 const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                await cache.delete(key);
+                await cache.delete(this._getCacheKey(song));
             },
             async _getSongFromCache(song) {
                 const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                return await cache.match(key);
+                return await cache.match(this._getCacheKey(song));
             },
             
             async toggleSongOfflineStatus(songIdToToggle = null, showFeedback = true) {
@@ -881,10 +877,10 @@
                         }
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
-                        if (showFeedback) this.showToast('Música disponível offline.', 'success');
+                        if (showFeedback) this.showToast('Disponível offline.', 'success');
                         return true;
                     } catch (error) {
-                        if (showFeedback) this.showToast('Erro ao baixar música.', 'error');
+                        if (showFeedback) this.showToast('Erro ao baixar.', 'error');
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
                         return false;
@@ -898,12 +894,12 @@
                         await this._removeSongFromCache(song);
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
-                        if (showFeedback) this.showToast('Música removida do offline.', 'info');
+                        if (showFeedback) this.showToast('Removido do offline.', 'info');
                         this.renderSongList();
                     };
 
                     if (!songIdToToggle) {
-                        this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, removeAction);
+                        this.showConfirmationModal(`Remover "${song.title}" do offline?`, removeAction);
                     } else {
                         await removeAction();
                     }
@@ -938,7 +934,7 @@
 
                 try {
                     const response = await fetch('./musics-manifest.json');
-                    if (!response.ok) throw new Error(`Falha ao buscar o manifesto: ${response.statusText}`);
+                    if (!response.ok) throw new Error(`Falha ao buscar manifesto: ${response.statusText}`);
                     const serverSongPaths = await response.json();
                     
                     const existingPaths = new Set(this.state.songs.map(song => song.path));
@@ -949,18 +945,13 @@
 
                     if (newPaths.length > 0) {
                         hasChanges = true;
-                        const newSongsPromises = newPaths.map(async (path) => {
-                            const metadata = await this.readRemoteAudioMetadata(path);
-                            const songData = { ...metadata, path: path, isOffline: false };
-                            await this.saveSongMetadataToDB(songData);
-                        });
+                        const newSongsPromises = newPaths.map(path => this.readRemoteAudioMetadata(path).then(meta => this.saveSongMetadataToDB({ ...meta, path, isOffline: false })));
                         await Promise.all(newSongsPromises);
                     }
 
                     if (pathsToRemove.length > 0) {
                         hasChanges = true;
-                        const deletePromises = pathsToRemove.map(song => this.deleteSongFromDB(song.id));
-                        await Promise.all(deletePromises);
+                        await Promise.all(pathsToRemove.map(song => this.deleteSongFromDB(song.id)));
                     }
                     
                     if (hasChanges) {
@@ -971,71 +962,59 @@
                         this.showToast('Catálogo já está atualizado.', 'info');
                     }
 
-                } catch (error) {
-                    this.showToast('Erro ao sincronizar biblioteca.', 'error');
-                } finally {
-                    syncIcon.classList.remove('fa-spin');
-                    this.dom.syncBtn.disabled = false;
-                }
+                } catch (error) { this.showToast('Erro ao sincronizar.', 'error'); } 
+                finally { syncIcon.classList.remove('fa-spin'); this.dom.syncBtn.disabled = false; }
             },
 
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
             
             async loadSong(e, t = !1, s = -1) {
                 if (!(e < 0 || e >= this.state.songs.length)) {
-                    this.state.currentObjectUrl && (URL.revokeObjectURL(this.state.currentObjectUrl), this.state.currentObjectUrl = null), this.state.currentSongIndex = e;
+                    if(this.state.currentObjectUrl) URL.revokeObjectURL(this.state.currentObjectUrl);
+                    this.state.currentSongIndex = e;
                     const o = this.state.songs[e];
                     this.state.currentQueueIndex = s;
                     try {
                         if (o.isOffline) {
                             const response = await this._getSongFromCache(o);
-                            if (response) {
-                                const dataBlob = await response.blob();
-                                this.state.currentObjectUrl = URL.createObjectURL(dataBlob);
-                                this.audio.src = this.state.currentObjectUrl;
-                            } else { this.audio.src = o.path }
+                            this.audio.src = response ? URL.createObjectURL(await response.blob()) : o.path;
                         } else this.audio.src = o.path
                     } catch (l) { return }
                     this.updatePlayerUI(o);
                     this.renderSongList();
 
                     if ("mediaSession" in navigator) {
-                        if (navigator.mediaSession.metadata && navigator.mediaSession.metadata.artwork[0].src.startsWith("blob:")) {
-                            URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
-                        }
+                        if (navigator.mediaSession.metadata?.artwork[0].src.startsWith("blob:")) URL.revokeObjectURL(navigator.mediaSession.metadata.artwork[0].src);
                         const artworkSrcBlob = o.artworkBlob || o.coverBlob;
                         const artworkUrl = artworkSrcBlob ? URL.createObjectURL(artworkSrcBlob) : "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
                         navigator.mediaSession.metadata = new MediaMetadata({
-                            title: o.title || "Título Desconhecido",
-                            artist: o.artist || "Artista Desconhecido",
-                            album: o.album || "Spobrefy",
+                            title: o.title || "Desconhecido", artist: o.artist || "Desconhecido", album: o.album || "Spobrefy",
                             artwork: [{ src: artworkUrl, sizes: "512x512", type: artworkSrcBlob?.type || "image/jpeg" }]
                         });
                     }
-                    t && this.play()
+                    if(t) this.play();
                 }
             },
             
-            play(){if(this.state.songs.length===0)return;this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()).catch(e=>{}),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="playing")},
-            pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
+            play(){if(this.state.songs.length===0)return;this.state.isPlaying=!0,this.audio.play().then(()=>this.savePlaybackState()),this.dom.playPauseBtn.innerHTML='<i class="fas fa-pause text-3xl"></i>',navigator.mediaSession&&(navigator.mediaSession.playbackState="playing")},
+            pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',navigator.mediaSession&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
             changeTrack(e){const t=this.state.playQueue.length>0?this.state.playQueue:this.state.songs;if(t.length===0)return;let s;const o=this.state.currentQueueIndex;if(this.state.isShuffle)do{s=Math.floor(Math.random()*t.length)}while(t.length>1&&s===o);else s=e==="next"?(o+1)%t.length:(o-1+t.length)%t.length;const i=t[s],a=this.state.songs.findIndex(e=>e.id===i.id);this.loadSong(a,!0,s)},
             
             handleSongEnd() {
                 if (this.state.repeatMode === 'one') { this.audio.currentTime = 0; this.play(); return; }
-                const isLastSongInQueue = this.state.playQueue.length > 0 && this.state.currentQueueIndex === this.state.playQueue.length - 1;
-                const shouldStop = isLastSongInQueue && this.state.repeatMode === 'none' && !this.state.isShuffle;
-                if (shouldStop) { this.pause(); this.audio.currentTime = 0; } 
+                const isLast = this.state.playQueue.length > 0 && this.state.currentQueueIndex === this.state.playQueue.length - 1;
+                if (isLast && this.state.repeatMode === 'none' && !this.state.isShuffle) { this.pause(); this.audio.currentTime = 0; } 
                 else { this.changeTrack('next'); }
             },
 
             handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
-            savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
-            async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(!e)return;try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);if(s>-1){this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view")}}catch(o){localStorage.removeItem("spobrefyPlaybackState")}},
-            seek(e){this.audio.duration&&(this.audio.currentTime=e/100*this.audio.duration,this.dom.progressBar.style.setProperty("--progress-percent",`${e}%`))},
+            savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;localStorage.setItem("spobrefyPlaybackState",JSON.stringify({songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume}))},
+            async loadPlaybackState(){try{const e=JSON.parse(localStorage.getItem("spobrefyPlaybackState"));if(!e)return;this.audio.volume=e.volume||1;const t=this.state.songs.findIndex(s=>s.id===e.songId);if(t>-1){this.state.restoredState=e,this.loadSong(t,!1),this.switchView("player-view")}}catch(o){localStorage.removeItem("spobrefyPlaybackState")}},
+            seek(e){if(this.audio.duration)this.audio.currentTime=e/100*this.audio.duration},
             updatePlayerUI(e) {
-                this.dom.trackTitle.textContent = e.title || "Título Desconhecido";
-                this.dom.trackArtist.textContent = e.artist || "Artista Desconhecido";
+                this.dom.trackTitle.textContent = e.title || "Desconhecido";
+                this.dom.trackArtist.textContent = e.artist || "Desconhecido";
                 if (this.state.currentPlayerCoverUrl) URL.revokeObjectURL(this.state.currentPlayerCoverUrl);
                 const placeholder = "https://placehold.co/500x500/101010/1DB954?text=Spobrefy";
                 const highResCover = e.artworkBlob || e.coverBlob;
@@ -1044,16 +1023,15 @@
                 this.dom.albumCover.src = coverUrl;
                 this.dom.background.style.backgroundImage = `url(${coverUrl})`;
             },
-            updateProgress(){const{duration:e,currentTime:t}=this.audio;e&&(this.dom.progressBar.value=t/e*100,this.dom.progressBar.style.setProperty("--progress-percent",`${t/e*100}%`),this.dom.durationEl.textContent=this.formatTime(e)),this.dom.currentTimeEl.textContent=this.formatTime(t),"mediaSession"in navigator&&this.audio.duration&&navigator.mediaSession.setPositionState({duration:this.audio.duration,playbackRate:this.audio.playbackRate,position:this.audio.currentTime})},
+            updateProgress(){const{duration:e,currentTime:t}=this.audio;if(e){this.dom.progressBar.value=t/e*100;this.dom.progressBar.style.setProperty("--progress-percent",`${t/e*100}%`),this.dom.durationEl.textContent=this.formatTime(e)}this.dom.currentTimeEl.textContent=this.formatTime(t);if(navigator.mediaSession&&e)navigator.mediaSession.setPositionState({duration:e,playbackRate:this.audio.playbackRate,position:t})},
             formatTime(e){if(isNaN(e))return"0:00";const t=Math.floor(e/60),s=Math.floor(e%60);return`${t}:${s<10?"0":""}${s}`},
-            toggleRepeatMode(){const e=["none","all","one"],t=e.indexOf(this.state.repeatMode);this.state.repeatMode=e[(t+1)%e.length],this.updateRepeatButtonUI()},
+            toggleRepeatMode(){const e=["none","all","one"];this.state.repeatMode=e[(e.indexOf(this.state.repeatMode)+1)%e.length];this.updateRepeatButtonUI()},
             updateRepeatButtonUI(){this.dom.repeatBtn.classList.remove("text-green-500","repeat-mode-one"),"all"===this.state.repeatMode?this.dom.repeatBtn.classList.add("text-green-500"):"one"===this.state.repeatMode&&this.dom.repeatBtn.classList.add("text-green-500","repeat-mode-one")},
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
-                
                 this.state.filteredSongs = searchTerm 
                     ? this.state.songs.filter(s => s.title.toLowerCase().includes(searchTerm) || (s.artist || '').toLowerCase().includes(searchTerm))
                     : [...this.state.songs];
@@ -1061,19 +1039,17 @@
                 this.dom.virtualListContainer.scrollTop = 0;
                 this.renderSongList();
                 
-                const isSearching = searchTerm.length > 0;
-                const noResults = isSearching && this.state.filteredSongs.length === 0;
-
+                const noResults = searchTerm.length > 0 && this.state.filteredSongs.length === 0;
                 this.dom.libraryEmptyState.classList.toggle('hidden', !noResults);
 
                 if (noResults) {
                     this.dom.libraryEmptyIcon.className = 'fas fa-search text-5xl mb-4';
-                    this.dom.libraryEmptyTitle.textContent = 'Nenhum resultado encontrado';
+                    this.dom.libraryEmptyTitle.textContent = 'Nenhum resultado';
                     this.dom.libraryEmptyText.textContent = 'Tente buscar por outro termo.';
                 } else {
                     this.dom.libraryEmptyIcon.className = 'fas fa-music text-5xl mb-4';
                     this.dom.libraryEmptyTitle.textContent = 'Sua biblioteca está vazia';
-                    this.dom.libraryEmptyText.innerHTML = 'Use o botão <i class="fas fa-folder-plus"></i> para começar.';
+                    this.dom.libraryEmptyText.innerHTML = 'Use <i class="fas fa-folder-plus"></i> para começar.';
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
             },
@@ -1081,74 +1057,26 @@
             showToast(message, type = 'info', duration = 1500) {
                 if (this.state.activeToastTimeout) clearTimeout(this.state.activeToastTimeout);
                 this.dom.toastContainer.innerHTML = '';
-
                 const toast = document.createElement('div');
                 const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
                 const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-zinc-700' };
-                toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colors[type] || colors['info']} toast-in`;
-                toast.innerHTML = `<i class="fas ${icons[type] || icons['info']} text-lg"></i><span>${message}</span>`;
+                toast.className = `flex items-center gap-3 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl ${colors[type]||colors.info} toast-in`;
+                toast.innerHTML = `<i class="fas ${icons[type]||icons.info} text-lg"></i><span>${message}</span>`;
                 this.dom.toastContainer.appendChild(toast);
-
-                this.state.activeToastTimeout = setTimeout(() => {
-                    toast.classList.remove('toast-in');
-                    toast.classList.add('toast-out');
-                    toast.addEventListener('animationend', () => toast.remove());
-                }, duration);
+                this.state.activeToastTimeout = setTimeout(() => { toast.classList.replace('toast-in','toast-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration);
             },
             
             showPlaylistModal(e){e?(this.dom.createPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.remove("scale-95"),this.dom.playlistNameInput.focus()):(this.dom.createPlaylistModal.classList.add("opacity-0"),this.dom.createPlaylistModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.createPlaylistModal.classList.add("pointer-events-none"),this.state.playlistIdToEdit=null},300))},
             showAddToPlaylistModal(e){e?(this.renderPlaylistSelectionList(),this.dom.addToPlaylistModal.classList.remove("opacity-0","pointer-events-none"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")):(this.dom.addToPlaylistModal.classList.add("opacity-0"),this.dom.addToPlaylistModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>this.dom.addToPlaylistModal.classList.add("pointer-events-none"),300))},
-            showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);if(!t)return;this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Artista Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
-            showConfirmationModal(e,t,s=!0){s?(this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")):(this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300))},
-            showNotificationModal(message, show = true) {
-                if(show){this.dom.notificationModalText.textContent=message,this.dom.notificationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.notificationModal.querySelector(".modal-content").classList.remove("scale-95")}else{this.dom.notificationModal.classList.add("opacity-0"),this.dom.notificationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.notificationModal.classList.add("pointer-events-none")},300)}
-            },
+            showSongOptionsModal(e){if(e){const t=this.state.songs.find(e=>e.id===this.state.songIdForOptions);if(!t)return;this.dom.optionsModalTitle.textContent=t.title,this.dom.optionsModalArtist.textContent=t.artist||"Desconhecido",this.dom.optionsAddToPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"none":"block",this.dom.optionsRemoveFromPlaylistLi.style.display=this.state.isPlaylistContextForOptions?"block":"none",this.dom.optionsDownloadBtn.textContent=t.isOffline?"Remover do offline":"Baixar",t.isOffline?this.dom.optionsDownloadBtn.classList.add("text-red-500"):this.dom.optionsDownloadBtn.classList.remove("text-red-500"),this.dom.songOptionsModal.classList.remove("opacity-0","pointer-events-none"),this.dom.songOptionsModal.querySelector(".modal-content").classList.remove("translate-y-full","sm:scale-95")}else this.dom.songOptionsModal.classList.add("opacity-0"),this.dom.songOptionsModal.querySelector(".modal-content").classList.add("translate-y-full","sm:scale-95"),setTimeout(()=>{this.dom.songOptionsModal.classList.add("pointer-events-none")},300)},
+            showConfirmationModal(e,t,s=!0){if(s){this.state.confirmationCallback=t,this.dom.confirmationModalText.textContent=e,this.dom.confirmationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.confirmationModal.querySelector(".modal-content").classList.remove("scale-95")}else{this.dom.confirmationModal.classList.add("opacity-0"),this.dom.confirmationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.confirmationModal.classList.add("pointer-events-none"),this.state.confirmationCallback=null},300)}},
+            showNotificationModal(message, show = true) {if(show){this.dom.notificationModalText.textContent=message,this.dom.notificationModal.classList.remove("opacity-0","pointer-events-none"),this.dom.notificationModal.querySelector(".modal-content").classList.remove("scale-95")}else{this.dom.notificationModal.classList.add("opacity-0"),this.dom.notificationModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.dom.notificationModal.classList.add("pointer-events-none")},300)}},
             handlePlaylistFormSubmit() { this.state.playlistIdToEdit ? this.renamePlaylist() : this.createPlaylist(); },
-            openCreatePlaylistModal() {
-                this.dom.playlistModalTitle.textContent = "Criar nova playlist";
-                this.dom.confirmPlaylistBtn.textContent = "Criar";
-                this.dom.playlistNameInput.value = "";
-                this.state.playlistIdToEdit = null;
-                this.showPlaylistModal(true);
-            },
-            openRenamePlaylistModal(playlistId) {
-                const playlist = this.state.playlists.find(p => p.id === playlistId);
-                if (!playlist) return;
-                this.dom.playlistModalTitle.textContent = "Renomear Playlist";
-                this.dom.confirmPlaylistBtn.textContent = "Salvar";
-                this.dom.playlistNameInput.value = playlist.name;
-                this.state.playlistIdToEdit = playlistId;
-                this.showPlaylistModal(true);
-            },
-            async createPlaylist(){
-                const name = this.dom.playlistNameInput.value.trim();
-                if(!name) return;
-                await this.savePlaylistToDB({name: name, songIds: []});
-                this.showToast('Playlist criada!', 'success');
-                this.showPlaylistModal(false);
-                await this.loadPlaylistsFromDB();
-            },
-            async renamePlaylist() {
-                const newName = this.dom.playlistNameInput.value.trim();
-                const playlistId = this.state.playlistIdToEdit;
-                const playlist = this.state.playlists.find(p => p.id === playlistId);
-                if (!newName || !playlist) return;
-                playlist.name = newName;
-                await this.savePlaylistToDB(playlist);
-                this.showToast('Playlist renomeada!', 'success');
-                this.showPlaylistModal(false);
-                await this.loadPlaylistsFromDB();
-                if (this.state.currentPlaylistId === playlistId) this.dom.playlistDetailsTitle.textContent = newName;
-            },
-            async deletePlaylist(e){
-                const playlist = this.state.playlists.find(p => p.id === e);
-                if(!playlist) return;
-                this.showConfirmationModal(`Excluir a playlist "${playlist.name}"?`, async () => {
-                    await this.deletePlaylistFromDB(e);
-                    this.showToast('Playlist excluída.', 'info');
-                    await this.loadPlaylistsFromDB();
-                });
-            },
+            openCreatePlaylistModal() {this.dom.playlistModalTitle.textContent="Criar playlist",this.dom.confirmPlaylistBtn.textContent="Criar",this.dom.playlistNameInput.value="",this.state.playlistIdToEdit=null,this.showPlaylistModal(true)},
+            openRenamePlaylistModal(playlistId) {const playlist=this.state.playlists.find(p=>p.id===playlistId);if(!playlist)return;this.dom.playlistModalTitle.textContent="Renomear",this.dom.confirmPlaylistBtn.textContent="Salvar",this.dom.playlistNameInput.value=playlist.name,this.state.playlistIdToEdit=playlistId,this.showPlaylistModal(true)},
+            async createPlaylist(){const name=this.dom.playlistNameInput.value.trim();if(!name)return;await this.savePlaylistToDB({name,songIds:[]}),this.showToast('Playlist criada!',"success"),this.showPlaylistModal(false),await this.loadPlaylistsFromDB()},
+            async renamePlaylist() {const newName=this.dom.playlistNameInput.value.trim();const playlist=this.state.playlists.find(p=>p.id===this.state.playlistIdToEdit);if(!newName||!playlist)return;playlist.name=newName,await this.savePlaylistToDB(playlist),this.showToast('Playlist renomeada!',"success"),this.showPlaylistModal(false),await this.loadPlaylistsFromDB(),this.state.currentPlaylistId===this.state.playlistIdToEdit&&(this.dom.playlistDetailsTitle.textContent=newName)},
+            async deletePlaylist(e){const playlist=this.state.playlists.find(p=>p.id===e);if(!playlist)return;this.showConfirmationModal(`Excluir "${playlist.name}"?`,async()=>{await this.deletePlaylistFromDB(e),this.showToast('Playlist excluída.',"info"),await this.loadPlaylistsFromDB()})},
             showPlaylistDetails(playlistId) {
                 this.state.currentPlaylistId = playlistId;
                 const playlist = this.state.playlists.find(p => p.id === playlistId);
@@ -1158,18 +1086,12 @@
                 const songsInPlaylist = this.state.songs.filter(s => playlist.songIds.includes(s.id));
                 const songCount = songsInPlaylist.length;
                 const totalDuration = songsInPlaylist.reduce((acc, song) => acc + (song.duration || 0), 0);
-                this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${Math.floor(totalDuration / 60)} min`;
+                this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount!==1?'s':''}, aprox. ${Math.floor(totalDuration/60)} min`;
 
                 const firstSong = songsInPlaylist[0];
                 const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
-                if (highResCover) {
-                    this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
-                    this.dom.playlistDetailsCoverImg.classList.remove("hidden");
-                    this.dom.playlistDetailsCoverIcon.classList.add("hidden");
-                } else {
-                    this.dom.playlistDetailsCoverImg.classList.add("hidden");
-                    this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
-                }
+                if(highResCover){this.dom.playlistDetailsCoverImg.src=URL.createObjectURL(highResCover),this.dom.playlistDetailsCoverImg.classList.remove("hidden"),this.dom.playlistDetailsCoverIcon.classList.add("hidden")}
+                else{this.dom.playlistDetailsCoverImg.classList.add("hidden"),this.dom.playlistDetailsCoverIcon.classList.remove("hidden")}
 
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
@@ -1183,107 +1105,22 @@
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
                 const songsToDownload = playlist.songIds.map(id => this.state.songs.find(s => s.id === id)).filter(s => s && !s.isOffline);
-
-                if (songsToDownload.length === 0) { this.showToast('Todas as músicas já estão offline.', 'info'); return; }
-
+                if (songsToDownload.length === 0) { this.showToast('Músicas já offline.', 'info'); return; }
                 const btn = this.dom.playlistDownloadAllBtn;
                 const originalIcon = btn.innerHTML;
-                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
-                btn.disabled = true;
-
-                this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
-                for (const song of songsToDownload) await this.toggleSongOfflineStatus(song.id, false); 
-
-                btn.innerHTML = originalIcon;
-                btn.disabled = false;
-                this.showToast('Download da playlist concluído!', 'success');
+                btn.innerHTML=`<i class="fas fa-spinner fa-spin"></i>`,btn.disabled=true,this.showToast(`Baixando ${songsToDownload.length} música(s)...`,"info");
+                for(const song of songsToDownload)await this.toggleSongOfflineStatus(song.id, false);
+                btn.innerHTML=originalIcon,btn.disabled=false,this.showToast('Download concluído!',"success")
             },
             
             db: null,
-            async initDB() {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open("SpobrefyDB", 4); 
-                    request.onerror = e => reject("Erro ao abrir DB"),
-                    request.onsuccess = e => { this.db = e.target.result; resolve(this.db); };
-                    request.onupgradeneeded = e => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains("songs")) {
-                            const songsStore = db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
-                            songsStore.createIndex("title", "title", { unique: false });
-                        }
-                        if (!db.objectStoreNames.contains("playlists")) {
-                            db.createObjectStore("playlists", { keyPath: "id", autoIncrement: true });
-                        }
-                    };
-                });
-            },
-
-            async addMusicFiles(e) {
-                this.showToast(`Adicionando ${e.length} músicas...`, 'info');
-                try {
-                    for (const t of e) {
-                        const s = await this.readAudioMetadata(t);
-                        const o = { ...s, path: null, isOffline: !0 };
-                        const i = await this.saveSongMetadataToDB(o, !0);
-                        await this._addSongToCache({ id: i }, t);
-                    }
-                    await this.loadSongsFromDB();
-                    this.showToast('Músicas adicionadas!', 'success');
-                } catch (s) { this.showToast('Erro ao adicionar músicas.', 'error'); }
-            },
-            async readAudioMetadata(e) {
-                return new Promise(async (resolve, reject) => {
-                    const s = document.createElement("audio");
-                    s.src = URL.createObjectURL(e);
-                    s.addEventListener("loadedmetadata", () => {
-                        URL.revokeObjectURL(s.src);
-                        jsmediatags.read(e, {
-                            onSuccess: async (o) => {
-                                const { title: i, artist: a, album: n, picture: l } = o.tags;
-                                let thumbnailBlob = null, artworkBlob = null;
-                                if (l) {
-                                    const originalCoverBlob = new Blob([new Uint8Array(l.data)], { type: l.format });
-                                    try {
-                                        [thumbnailBlob, artworkBlob] = await Promise.all([
-                                            this.createThumbnail(originalCoverBlob, 100, 100),
-                                            this.createThumbnail(originalCoverBlob, 512, 512)
-                                        ]);
-                                    } catch (error) {}
-                                }
-                                resolve({ title: i || e.name.replace(/\.[^/.]+$/, ""), artist: a, album: n, coverBlob: thumbnailBlob, artworkBlob: artworkBlob, duration: s.duration });
-                            },
-                            onError: (o) => { resolve({ title: e.name.replace(/\.[^/.]+$/, ""), artist: "Artista Desconhecido", album: null, coverBlob: null, artworkBlob: null, duration: s.duration }); }
-                        });
-                    });
-                    s.addEventListener('error', (err) => { URL.revokeObjectURL(s.src); reject(new Error('Erro ao carregar áudio.')); });
-                });
-            },
-            async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
-            async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite").objectStore("songs"),n=i.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
-            
-            async deleteSongFromDB(songId) {
-                const songToDelete = this.state.songs.find(s => s.id === songId);
-                if (songToDelete && songToDelete.isOffline) await this._removeSongFromCache(songToDelete);
-                return new Promise((resolve, reject) => {
-                    const transaction = this.db.transaction(["songs"], "readwrite");
-                    transaction.objectStore("songs").delete(songId);
-                    transaction.oncomplete = resolve; transaction.onerror = reject;
-                });
-            },
-
-            async loadSongsFromDB(){
-                return new Promise((e,t)=>{
-                    const s=this.db.transaction(["songs"],"readonly").objectStore("songs").getAll();
-                    s.onsuccess = t => {
-                        this.state.songs = t.target.result;
-                        this.state.filteredSongs = [...this.state.songs];
-                        this.initializeVirtualList();
-                        e(this.state.songs)
-                    };
-                    s.onerror=t
-                })
-            },
-            
+            async initDB() {return new Promise((resolve, reject) => {const request = indexedDB.open("SpobrefyDB", 4); request.onerror=e=>reject("Erro DB"),request.onsuccess=e=>{this.db=e.target.result;resolve(this.db)};request.onupgradeneeded=e=>{const t=e.target.result;t.objectStoreNames.contains("songs")||t.createObjectStore("songs",{keyPath:"id",autoIncrement:!0}).createIndex("title","title"),t.objectStoreNames.contains("playlists")||t.createObjectStore("playlists",{keyPath:"id",autoIncrement:!0})}})},
+            async addMusicFiles(e) {this.showToast(`Adicionando ${e.length} músicas...`,"info");try{for(const t of e){const s=await this.readAudioMetadata(t),o={...s,path:null,isOffline:!0},i=await this.saveSongMetadataToDB(o,!0);await this._addSongToCache({id:i},t)}await this.loadSongsFromDB(),this.showToast('Músicas adicionadas!',"success")}catch(s){this.showToast('Erro ao adicionar.',"error")}},
+            async readAudioMetadata(e) {return new Promise(async(resolve,reject)=>{const t=document.createElement("audio");t.src=URL.createObjectURL(e),t.addEventListener("loadedmetadata",()=>{URL.revokeObjectURL(t.src),jsmediatags.read(e,{onSuccess:async o=>{const{title:i,artist:s,album:a,picture:n}=o.tags;let l=null,r=null;if(n){const d=new Blob([new Uint8Array(n.data)],{type:n.format});try{[l,r]=await Promise.all([this.createThumbnail(d,100,100),this.createThumbnail(d,512,512)])}catch(c){}}resolve({title:i||e.name.replace(/\.[^/.]+$/,""),artist:s,album:a,coverBlob:l,artworkBlob:r,duration:t.duration})},onError:o=>resolve({title:e.name.replace(/\.[^/.]+$/,""),artist:"Desconhecido",album:null,coverBlob:null,artworkBlob:null,duration:t.duration})})}),t.addEventListener("error",err=>{URL.revokeObjectURL(t.src),reject(new Error("Erro ao carregar áudio."))})})},
+            async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP: ${t.status}`);return await this.readAudioMetadata(await t.blob())}catch(o){const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Desconhecido",album:null,coverBlob:null,duration:0}}},
+            async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite").objectStore("songs").put(e);i.onsuccess=e=>s(t?e.target.result:void 0),i.onerror=o})},
+            async deleteSongFromDB(songId){const song=this.state.songs.find(s=>s.id===songId);song&&song.isOffline&&await this._removeSongFromCache(song);return new Promise((resolve,reject)=>{const transaction=this.db.transaction(["songs"],"readwrite");transaction.objectStore("songs").delete(songId),transaction.oncomplete=resolve,transaction.onerror=reject})},
+            async loadSongsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["songs"],"readonly").objectStore("songs").getAll();s.onsuccess=t=>{this.state.songs=t.target.result,this.state.filteredSongs=[...this.state.songs],this.initializeVirtualList(),e(this.state.songs)},s.onerror=t})},
             async savePlaylistToDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite").objectStore("playlists").put(e);o.onsuccess=t,o.onerror=s})},
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly").objectStore("playlists").getAll();s.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},s.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite").objectStore("playlists").delete(e);o.onsuccess=t,o.onerror=s})},
@@ -1351,31 +1188,31 @@
                     this.imageObserver.unobserve(cover);
                     
                     if (song) {
+                        const songId = song.id;
                         item.style.opacity = '1';
                         item.style.transform = `translateY(${songIndex * itemHeight}px)`;
-                        item.dataset.songId = song.id;
+                        item.dataset.songId = songId;
 
-                        const placeholder = "https://placehold.co/100x100/27272a/3f3f46?text=?";
-                        let newSrc = placeholder;
-                        
-                        if (song.coverBlob) {
-                             newSrc = URL.createObjectURL(song.coverBlob);
-                             const oldSrc = cover.getAttribute('data-blob-src');
-                             if(oldSrc) URL.revokeObjectURL(oldSrc);
-                             cover.setAttribute('data-blob-src', newSrc);
-                        }
-                        
-                        if (cover.src !== newSrc) {
+                        if (this.state.imageCache[songId]) {
+                            cover.src = this.state.imageCache[songId];
+                        } else {
+                            const placeholder = "https://placehold.co/100x100/27272a/3f3f46?text=?";
                             cover.src = placeholder;
+                            let newSrc = placeholder;
+                            if (song.coverBlob) {
+                                newSrc = URL.createObjectURL(song.coverBlob);
+                                const oldSrc = cover.getAttribute('data-blob-src');
+                                if(oldSrc) URL.revokeObjectURL(oldSrc);
+                                cover.setAttribute('data-blob-src', newSrc);
+                            }
                             cover.setAttribute('data-src', newSrc);
+                            this.imageObserver.observe(cover);
                         }
-
-                        this.imageObserver.observe(cover);
 
                         item.querySelector('.song-title').textContent = song.title;
-                        item.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                        item.querySelector('.song-artist').textContent = song.artist || 'Desconhecido';
                         item.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
-                        item.classList.toggle('playing', song.id === playingSongId);
+                        item.classList.toggle('playing', songId === playingSongId);
 
                     } else {
                         item.style.opacity = '0';
@@ -1385,7 +1222,6 @@
             
             renderNonVirtualSongList(songs = [], targetElement = this.dom.playlistSongList) {
                 targetElement.innerHTML = "";
-
                 if (songs.length > 0) {
                     const fragment = document.createDocumentFragment();
                     const playingSongId = this.state.songs[this.state.currentSongIndex]?.id;
@@ -1394,14 +1230,11 @@
                         const item = clone.querySelector(".song-item");
                         const cover = clone.querySelector(".song-cover");
                         item.dataset.songId = song.id;
-                        if (song.coverBlob) {
-                            cover.setAttribute("data-src", URL.createObjectURL(song.coverBlob));
-                        } else {
-                            cover.setAttribute("data-src", "https://placehold.co/100x100/27272a/3f3f46?text=?");
-                        }
+                        if (song.coverBlob) cover.setAttribute("data-src", URL.createObjectURL(song.coverBlob));
+                        else cover.setAttribute("data-src", "https://placehold.co/100x100/27272a/3f3f46?text=?");
                         this.imageObserver.observe(cover);
                         item.querySelector(".song-title").textContent = song.title;
-                        item.querySelector(".song-artist").textContent = song.artist || "Artista Desconhecido";
+                        item.querySelector(".song-artist").textContent = song.artist || "Desconhecido";
                         item.querySelector(".offline-indicator").classList.toggle("hidden", !song.isOffline);
                         item.classList.toggle('playing', song.id === playingSongId);
                         fragment.appendChild(clone);
@@ -1414,13 +1247,12 @@
                 this.dom.playlistGrid.innerHTML="";
                 const e=document.createDocumentFragment();
                 this.state.playlists.forEach(t=>{
-                    const s=this.dom.playlistItemTemplate.content.cloneNode(true);
-                    const o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");
-                    o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name;
-                    s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;
+                    const s=this.dom.playlistItemTemplate.content.cloneNode(true),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");
+                    o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;
                     let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";
-                    if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}
-                    i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)
+                    const firstSong = t.songIds.length>0 ? this.state.songs.find(e=>e.id===t.songIds[0]) : null;
+                    if(firstSong?.coverBlob) a=URL.createObjectURL(firstSong.coverBlob);
+                    i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s);
                 });
                 this.dom.playlistGrid.appendChild(e);
             },
@@ -1440,8 +1272,7 @@
                     const name = document.createElement('span');
                     name.textContent = p.name;
                     button.appendChild(name);
-                    const songIsInPlaylist = p.songIds.includes(songId);
-                    if (songIsInPlaylist) {
+                    if (p.songIds.includes(songId)) {
                         const check = document.createElement('i');
                         check.className = 'fas fa-check text-green-500';
                         button.appendChild(check);
