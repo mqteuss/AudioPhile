@@ -500,9 +500,7 @@
                 notificationModalText: document.getElementById('notification-modal-text'),
                 notificationOkBtn: document.getElementById('notification-ok-btn'),
                 toastContainer: document.getElementById('toast-container'),
-                // INÍCIO DA MODIFICAÇÃO: Mapeando o novo botão
                 addToPlaylistFromPlayerBtn: document.getElementById('add-to-playlist-from-player-btn'),
-                // FIM DA MODIFICAÇÃO
             },
 
             state: {
@@ -686,12 +684,9 @@
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
-                // INÍCIO DA MODIFICAÇÃO: Adicionando evento de clique ao novo botão
                 this.dom.addToPlaylistFromPlayerBtn.addEventListener('click', () => this.handleAddToPlaylistFromPlayer());
-                // FIM DA MODIFICAÇÃO
             },
 
-            // INÍCIO DA MODIFICAÇÃO: Nova função para lidar com o clique do botão
             handleAddToPlaylistFromPlayer() {
                 if (this.state.currentSongIndex === -1) {
                     this.showToast('Nenhuma música está tocando.', 'info');
@@ -703,7 +698,6 @@
                     this.showAddToPlaylistModal(true);
                 }
             },
-            // FIM DA MODIFICAÇÃO
 
             setupImageObserver() {
                 this.imageObserver = new IntersectionObserver((entries, observer) => {
@@ -1029,7 +1023,28 @@
             pause(){this.state.isPlaying=!1,this.audio.pause(),this.dom.playPauseBtn.innerHTML='<i class="fas fa-play text-3xl ml-1"></i>',"mediaSession"in navigator&&(navigator.mediaSession.playbackState="paused")},
             togglePlayPause(){this.state.currentSongIndex===-1&&this.state.songs.length>0?(this.state.playQueue=[...this.state.songs],this.loadSong(0,!0,0)):this.state.isPlaying?this.pause():this.play()},
             changeTrack(e){const t=this.state.playQueue.length>0?this.state.playQueue:this.state.songs;if(t.length!==0){let s;const o=this.state.currentQueueIndex;if(this.state.isShuffle)do{s=Math.floor(Math.random()*t.length)}while(t.length>1&&s===o);else s=e==="next"?(o+1)%t.length:(o-1+t.length)%t.length;const i=t[s],a=this.state.songs.findIndex(e=>e.id===i.id);this.loadSong(a,!0,s)}},
-            handleSongEnd(){if("one"===this.state.repeatMode)this.audio.currentTime=0,this.play();else if("all"===this.state.repeatMode||"none"===this.state.repeatMode){const e=this.state.playQueue.length>0&&this.state.currentQueueIndex===this.state.playQueue.length-1;"all"===this.state.repeatMode||!e?this.changeTrack("next"):(this.pause(),this.audio.currentTime=0)}},
+            
+            // ========== INÍCIO DA CORREÇÃO ==========
+            handleSongEnd() {
+                if (this.state.repeatMode === 'one') {
+                    this.audio.currentTime = 0;
+                    this.play();
+                    return;
+                }
+
+                const isLastSongInQueue = this.state.playQueue.length > 0 && this.state.currentQueueIndex === this.state.playQueue.length - 1;
+                
+                const shouldStop = isLastSongInQueue && this.state.repeatMode === 'none' && !this.state.isShuffle;
+
+                if (shouldStop) {
+                    this.pause();
+                    this.audio.currentTime = 0;
+                } else {
+                    this.changeTrack('next');
+                }
+            },
+            // ========== FIM DA CORREÇÃO ==========
+
             handleMetadataLoaded(){const e=this.state.songs[this.state.currentSongIndex];e&&!e.duration&&(e.duration=this.audio.duration,this.saveSongMetadataToDB(e)),this.updateProgress(),this.state.restoredState&&e?.id===this.state.restoredState.songId&&(this.audio.currentTime=this.state.restoredState.currentTime,this.updateProgress(),this.state.restoredState=null)},
             savePlaybackState(){if(this.state.currentSongIndex===-1)return;const e=this.state.songs[this.state.currentSongIndex];if(!e)return;const t={songId:e.id,currentTime:this.audio.currentTime,volume:this.audio.volume};localStorage.setItem("spobrefyPlaybackState",JSON.stringify(t))},
             async loadPlaybackState(){const e=localStorage.getItem("spobrefyPlaybackState");if(e)try{const t=JSON.parse(e);this.audio.volume=t.volume||1;const s=this.state.songs.findIndex(e=>e.id===t.songId);s>-1&&(console.log(`Restaurando estado: Música ID ${t.songId} no tempo ${this.formatTime(t.currentTime)}`),this.state.restoredState=t,this.loadSong(s,!1),this.switchView("player-view"))}catch(o){console.error("Erro ao carregar o estado salvo:",o),localStorage.removeItem("spobrefyPlaybackState")}},
