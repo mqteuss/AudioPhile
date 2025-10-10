@@ -1,9 +1,9 @@
 // sw.js
 
 // Define um nome e versão para o nosso cache. Mudar a versão força a atualização do cache.
-const CACHE_NAME = 'spobrefy-cache-v260';
+const CACHE_NAME = 'spobrefy-cache-v11';
 // NOVO: Define o nome do cache de áudio para referência
-const AUDIO_CACHE_NAME = 'spobrefy-audio-cache-v31';
+const AUDIO_CACHE_NAME = 'spobrefy-audio-cache-v11';
 
 // Lista de arquivos essenciais do "app shell" para serem cacheados na instalação.
 const urlsToCache = [
