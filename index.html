@@ -970,14 +970,12 @@
                 this.dom.syncBtn.disabled = true;
             
                 try {
-                    // 1. Buscar manifesto do servidor
                     const response = await fetch('./musics-manifest.json');
                     if (!response.ok) {
                         throw new Error(`Falha ao buscar o manifesto: ${response.statusText}`);
                     }
                     const serverSongPaths = await response.json();
             
-                    // 2. Criar Sets para comparação O(1)
                     const existingPathsMap = new Map(
                         this.state.songs
                             .filter(s => s.path)
@@ -985,12 +983,10 @@
                     );
                     const serverPathsSet = new Set(serverSongPaths);
             
-                    // 3. Identificar diferenças
                     const newPaths = serverSongPaths.filter(path => !existingPathsMap.has(path));
                     const songsToRemove = Array.from(existingPathsMap.values())
                         .filter(song => !serverPathsSet.has(song.path));
             
-                    // Se não há mudanças, retornar imediatamente
                     if (newPaths.length === 0 && songsToRemove.length === 0) {
                         this.showToast('Catálogo já está atualizado.', 'info');
                         console.log("✅ Catálogo já está atualizado.");
@@ -999,7 +995,6 @@
             
                     console.log(`🔄 Sincronização: ${newPaths.length} novas, ${songsToRemove.length} para remover`);
             
-                    // 4. Processar remoções em lote (mais rápido que individual)
                     if (songsToRemove.length > 0) {
                         console.log(`🗑️ Removendo ${songsToRemove.length} músicas obsoletas...`);
                         
@@ -1007,7 +1002,6 @@
                             const transaction = this.db.transaction(["songs"], "readwrite");
                             const store = transaction.objectStore("songs");
                             
-                            // Remover do cache e DB em paralelo
                             const cachePromises = [];
                             
                             for (const song of songsToRemove) {
@@ -1027,11 +1021,10 @@
                         console.log(`✅ ${songsToRemove.length} músicas removidas.`);
                     }
             
-                    // 5. Processar novas músicas em lotes concorrentes (limite de 5 simultâneas)
                     if (newPaths.length > 0) {
                         console.log(`🔎 Processando ${newPaths.length} novas músicas...`);
                         
-                        const BATCH_SIZE = 5; // Limite de requisições simultâneas
+                        const BATCH_SIZE = 5;
                         let processed = 0;
                         
                         for (let i = 0; i < newPaths.length; i += BATCH_SIZE) {
@@ -1049,7 +1042,6 @@
                                         await this.saveSongMetadataToDB(songData);
                                         processed++;
                                         
-                                        // Feedback visual a cada lote
                                         if (processed % BATCH_SIZE === 0 || processed === newPaths.length) {
                                             console.log(`⏳ Progresso: ${processed}/${newPaths.length}`);
                                         }
@@ -1063,13 +1055,11 @@
                         console.log(`✅ ${processed} novas músicas adicionadas.`);
                     }
             
-                    // 6. Atualizar interface apenas uma vez no final
                     this.showToast('Catálogo sincronizado!', 'success');
                     console.log("🎶 Recarregando catálogo...");
                     
                     await this.loadSongsFromDB();
                     
-                    // Só recarrega playlists se músicas foram removidas
                     if (songsToRemove.length > 0) {
                         await this.loadPlaylistsFromDB();
                     }
@@ -1086,7 +1076,6 @@
             async precachePopularSongs(limit = 10) {
                 console.log(`📦 Pré-carregando ${limit} músicas mais tocadas...`);
                 
-                // Ordena por algum critério (ex: músicas mais recentes ou mais tocadas)
                 const songsToPrecache = this.state.songs
                     .filter(s => s.path && !s.isOffline)
                     .slice(0, limit);
@@ -1548,7 +1537,7 @@
                 }
             
                 if (songs.length === 0) {
-                    container.innerHTML = ''; // Limpa o container se não houver musicas
+                    container.innerHTML = '';
                     return;
                 }
             
@@ -1582,11 +1571,8 @@
 
             renderPlaylistGrid(){
                 const grid = this.dom.playlistGrid;
-                grid.querySelectorAll('img').forEach(img => {
-                    if (img.src.startsWith('blob:')) {
-                        URL.revokeObjectURL(img.src);
-                    }
-                });
+                // ✅ BUG FIX: A linha abaixo, que revogava URLs prematuramente, foi removida.
+                // grid.querySelectorAll('img').forEach(img => { ... });
 
                 grid.innerHTML="";
                 const fragment = document.createDocumentFragment();
@@ -1603,7 +1589,7 @@
                     if(playlist.songIds.length > 0) {
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
                         if(firstSong) {
-                           coverSrc = this.getCoverUrl(firstSong); // Usa o cache aqui também
+                           coverSrc = this.getCoverUrl(firstSong);
                         }
                     }
                     
