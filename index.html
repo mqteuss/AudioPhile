@@ -1518,7 +1518,10 @@
                         headers: { 'Range': 'bytes=0-262143' }
                     });
                     
-                    if (!response.ok && response.status !== 206) throw new Error(`Erro HTTP: ${response.status}`);
+                    // Aceita tanto 200 (servidor não suporta Range) quanto 206 (Partial Content)
+                    if (!response.ok && response.status !== 206) {
+                        throw new Error(`Erro HTTP: ${response.status}`);
+                    }
                     
                     const partialBlob = await response.blob();
                     
