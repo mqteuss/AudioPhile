@@ -143,14 +143,29 @@
         .modal-overlay { transition: opacity 0.3s ease-in-out; }
         .modal-content { transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 
+        /* Animações para o Toast */
         @keyframes toast-in {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
+
         @keyframes toast-out {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); }
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
         }
+
         .toast-in { animation: toast-in 0.4s ease-in-out forwards; }
         .toast-out { animation: toast-out 0.4s ease-in-out forwards; }
 
@@ -161,32 +176,57 @@
         }
         .nav-icon-bounce { animation: nav-icon-bounce 0.3s ease-in-out; }
 
-        #playlist-song-list { counter-reset: song-counter; }
+        #playlist-song-list {
+            counter-reset: song-counter;
+        }
         #playlist-song-list .song-item .song-number-container {
-            position: absolute; top: 0; left: 0; width: 48px; height: 48px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1rem; color: #a1a1aa; transition: opacity 0.2s ease-in-out;
+            position: absolute;
+            top: 0; left: 0;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #a1a1aa;
+            transition: opacity 0.2s ease-in-out;
         }
         #playlist-song-list .song-item .song-number-container::before {
-            counter-increment: song-counter; content: counter(song-counter);
+            counter-increment: song-counter;
+            content: counter(song-counter);
         }
-        #playlist-song-list .song-item .song-cover { transition: opacity 0.2s ease-in-out; opacity: 1; }
-        #playlist-song-list .song-item .clickable-area:hover .song-cover { opacity: 0.2; }
-        #playlist-song-list .song-item .song-number-container { opacity: 0; }
-        #playlist-song-list .song-item .clickable-area:hover .song-number-container { opacity: 1; }
+        #playlist-song-list .song-item .song-cover {
+            transition: opacity 0.2s ease-in-out;
+            opacity: 1;
+        }
+        #playlist-song-list .song-item .clickable-area:hover .song-cover {
+            opacity: 0.2;
+        }
+        #playlist-song-list .song-item .song-number-container {
+            opacity: 0;
+        }
+        #playlist-song-list .song-item .clickable-area:hover .song-number-container {
+            opacity: 1;
+        }
 
-        .song-item.playing .song-title { color: #1DB954; }
+        /* Destaque genérico para música tocando */
+        .song-item.playing .song-title {
+            color: #1DB954;
+        }
     </style>
 </head>
 <body class="bg-black antialiased overflow-hidden" style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);">
 
     <div id="app-background"></div>
+
     <input type="file" id="music-folder-input" webkitdirectory directory multiple class="hidden">
 
     <main id="app-content" class="h-screen w-screen relative">
+
         <div id="player-view" class="view active flex flex-col justify-start items-center p-6 pt-10 md:pt-12">
             <div class="w-full max-w-sm">
                 <img id="album-cover" src="https://placehold.co/500x500/101010/1DB954?text=Spobrefy" alt="Capa do Álbum" class="w-full aspect-square rounded-lg shadow-2xl object-cover">
+                
                 <div class="flex justify-between items-center my-8 gap-4">
                     <div class="flex-grow min-w-0">
                         <h2 id="track-title" class="text-2xl font-bold truncate text-left">Bem-vindo!</h2>
@@ -217,6 +257,7 @@
 
         <div id="search-view" class="view pb-20 flex flex-col">
             <h1 class="text-3xl font-bold px-6 md:px-8 pt-6 md:pt-8 mb-4 flex-shrink-0">Catálogo</h1>
+        
             <div class="sticky top-0 z-10 px-6 md:px-8 py-3 flex-shrink-0" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
                 <div class="flex items-center gap-3">
                     <div class="relative flex-grow">
@@ -231,6 +272,7 @@
                     </button>
                 </div>
             </div>
+        
             <div class="px-6 md:px-8 flex-grow relative">
                 <div id="library-empty-state" class="text-center text-zinc-500 mt-16 absolute inset-0 flex flex-col items-center justify-center">
                     <i id="library-empty-icon" class="fas fa-music text-5xl mb-4"></i>
@@ -240,6 +282,7 @@
                 <div id="song-list" class="mt-4 h-full"></div>
             </div>
         </div>
+
 
         <div id="playlists-view" class="view p-6 md:p-8 pb-20">
              <h1 class="text-3xl font-bold mb-6">Suas Playlists</h1>
@@ -260,6 +303,7 @@
                     <button id="edit-playlist-title-btn" class="text-zinc-500 hover:text-white" title="Renomear playlist"><i class="fas fa-pencil"></i></button>
                 </div>
                 <p id="playlist-details-meta" class="text-zinc-400 text-sm mt-1"></p>
+
                 <div class="flex justify-center items-center gap-4 my-6">
                     <button id="playlist-play-btn" class="bg-green-500 text-black font-bold py-3 px-6 rounded-full hover:scale-105 transition-transform text-lg">Play</button>
                     <button id="playlist-shuffle-btn" class="border border-zinc-600 text-white font-bold py-3 px-6 rounded-full hover:bg-zinc-700 transition-colors text-lg">Shuffle</button>
@@ -280,10 +324,22 @@
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 h-[64px] bg-zinc-900/50 backdrop-blur-lg flex justify-around items-center border-t border-zinc-800">
-        <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-search text-xl"></i><span class="text-xs">Catálogo</span></button>
-        <button data-view="player-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-green-500 transition-colors"><i class="fas fa-circle-play text-xl"></i><span class="text-xs">Player</span></button>
-        <button data-view="playlists-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-bars-staggered text-xl"></i><span class="text-xs">Playlists</span></button>
-        <button id="create-playlist-btn" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors"><i class="fas fa-plus text-xl"></i><span class="text-xs">Criar</span></button>
+        <button data-view="search-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-search text-xl"></i>
+            <span class="text-xs">Catálogo</span>
+        </button>
+        <button data-view="player-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-green-500 transition-colors">
+            <i class="fas fa-circle-play text-xl"></i>
+            <span class="text-xs">Player</span>
+        </button>
+        <button data-view="playlists-view" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-bars-staggered text-xl"></i>
+            <span class="text-xs">Playlists</span>
+        </button>
+        <button id="create-playlist-btn" class="nav-btn flex flex-col items-center justify-center w-full h-full gap-1 text-zinc-400 transition-colors">
+            <i class="fas fa-plus text-xl"></i>
+            <span class="text-xs">Criar</span>
+        </button>
     </nav>
 
     <div id="create-playlist-modal" class="modal-overlay fixed inset-0 bg-black/70 flex justify-center items-center p-4 opacity-0 pointer-events-none">
@@ -900,10 +956,49 @@
             handlePlaylistFormSubmit(){this.state.playlistIdToEdit?this.renamePlaylist():this.createPlaylist()},
             openCreatePlaylistModal(){this.dom.playlistModalTitle.textContent="Nova playlist";this.dom.confirmPlaylistBtn.textContent="Criar";this.dom.playlistNameInput.value="";this.state.playlistIdToEdit=null;this.showPlaylistModal(!0)},
             openRenamePlaylistModal(id){const p=this.state.playlists.find(p=>p.id===id);if(!p)return;this.dom.playlistModalTitle.textContent="Renomear";this.dom.confirmPlaylistBtn.textContent="Salvar";this.dom.playlistNameInput.value=p.name;this.state.playlistIdToEdit=id;this.showPlaylistModal(!0)},
-            async createPlaylist(){const name=this.dom.playlistNameInput.value.trim();if(!name)return;await this.savePlaylistToDB({name,songIds:[]});this.showToast('Playlist criada!', 'success');this.showPlaylistModal(!1);await this.loadPlaylistsFromDB()},
-            async renamePlaylist(){const newName=this.dom.playlistNameInput.value.trim();const id=this.state.playlistIdToEdit;const p=this.state.playlists.find(p=>p.id===id);if(!newName||!p)return;p.name=newName;await this.savePlaylistToDB(p);this.showToast('Playlist renomeada!', 'success');this.showPlaylistModal(!1);await this.loadPlaylistsFromDB();if(this.state.currentPlaylistId===id)this.dom.playlistDetailsTitle.textContent=newName},
+            async createPlaylist(){const name=this.dom.playlistNameInput.value.trim();if(!name)return;await this.savePlaylistToDB({name,songIds:[]});this.showToast('Playlist criada!','success');this.showPlaylistModal(!1);await this.loadPlaylistsFromDB()},
+            async renamePlaylist(){const newName=this.dom.playlistNameInput.value.trim();const id=this.state.playlistIdToEdit;const p=this.state.playlists.find(p=>p.id===id);if(!newName||!p)return;p.name=newName;await this.savePlaylistToDB(p);this.showToast('Playlist renomeada!','success');this.showPlaylistModal(!1);await this.loadPlaylistsFromDB();if(this.state.currentPlaylistId===id)this.dom.playlistDetailsTitle.textContent=newName},
             async deletePlaylist(id){const p=this.state.playlists.find(p=>p.id===id);if(!p)return;this.showConfirmationModal(`Excluir a playlist "${p.name}"?`,async()=>{await this.deletePlaylistFromDB(id);this.showToast('Playlist excluída.','info');await this.loadPlaylistsFromDB()})},
-            showPlaylistDetails(id){this.state.currentPlaylistId=id;const p=this.state.playlists.find(p=>p.id===id);if(!p)return;this.dom.playlistDetailsTitle.textContent=p.name;const songs=p.songIds.map(id=>this.state.songs.find(s=>s.id===id)).filter(Boolean);const count=songs.length;const duration=songs.reduce((a,s)=>a+(s.duration||0),0);this.dom.playlistDetailsMeta.textContent=`${count} música${count!==1?'s':''}, ${Math.floor(duration/60)} min`;const coverSong=songs.find(s=>s.artworkBlob||s.coverBlob);const cover=coverSong?(coverSong.artworkBlob||coverSong.coverBlob):null;if(cover){this.dom.playlistDetailsCoverImg.src=URL.createObjectURL(cover);this.dom.playlistDetailsCoverImg.classList.remove("hidden");this.dom.playlistDetailsCoverIcon.classList.add("hidden")}else{this.dom.playlistDetailsCoverImg.src="";this.dom.playlistDetailsCoverImg.classList.add("hidden");this.dom.playlistDetailsCoverIcon.classList.remove("hidden")}this.dom.playlistEmptyState.classList.toggle('hidden',count>0);this.dom.playlistSongList.classList.toggle('hidden',count===0);if(count>0)this.renderSongList(songs,this.dom.playlistSongList);this.switchView("playlist-details-view")},
+            
+            showPlaylistDetails(playlistId) {
+                this.state.currentPlaylistId = playlistId;
+                const playlist = this.state.playlists.find(p => p.id === playlistId);
+                if (!playlist) return;
+
+                this.dom.playlistDetailsTitle.textContent = playlist.name;
+                const songsInPlaylist = this.state.songs.filter(s => playlist.songIds.includes(s.id));
+                const songCount = songsInPlaylist.length;
+                const totalDuration = songsInPlaylist.reduce((acc, song) => acc + (song.duration || 0), 0);
+                const totalMinutes = Math.floor(totalDuration / 60);
+
+                this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${totalMinutes} min`;
+
+                const firstSong = songsInPlaylist[0];
+                const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
+                if (highResCover) {
+                    this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
+                    this.dom.playlistDetailsCoverImg.classList.remove("hidden");
+                    this.dom.playlistDetailsCoverIcon.classList.add("hidden");
+                } else {
+                    this.dom.playlistDetailsCoverImg.classList.add("hidden");
+                    this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
+                }
+
+                this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
+                this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
+                
+                if (this.virtualScrollers['playlist-song-list']) {
+                    VirtualScroller.destroy('playlist-song-list');
+                    this.virtualScrollers['playlist-song-list'] = null;
+                }
+                
+                if (songCount > 0) {
+                    this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
+                }
+
+                this.switchView("playlist-details-view");
+            },
+
             async downloadPlaylist(){const p=this.state.playlists.find(p=>p.id===this.state.currentPlaylistId);if(!p)return;const songs=p.songIds.map(id=>this.state.songs.find(s=>s.id===id)).filter(s=>s&&!s.isOffline&&s.path);if(songs.length===0){this.showToast('Todas as músicas já estão offline.','info');return}const btn=this.dom.playlistDownloadAllBtn;const icon=btn.innerHTML;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>';btn.disabled=!0;this.showToast(`Baixando ${songs.length} música(s)...`,'info');try{await Promise.all(songs.map(s=>this.toggleSongOfflineStatus(s.id,!0)));this.showToast('Download da playlist concluído!','success')}catch(e){this.showToast('Erro ao baixar músicas.','error')}finally{btn.innerHTML=icon;btn.disabled=!1}},
             updatePlayingSongUI(id){document.querySelectorAll('.song-item.playing').forEach(i=>i.classList.remove('playing'));if(id==null)return;document.querySelectorAll(`.song-item[data-song-id="${id}"]`).forEach(i=>i.classList.add('playing'))},
             db:null,
@@ -919,7 +1014,56 @@
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const r=this.db.transaction(["playlists"],"readwrite").objectStore("playlists").delete(e);r.onsuccess=t;r.onerror=s})},
             cleanupObjectURLs(e){e.querySelectorAll("img[src^='blob:']").forEach(i=>URL.revokeObjectURL(i.src))},
             cleanupItemURLs(e){e.querySelectorAll("img[src^='blob:']").forEach(i=>URL.revokeObjectURL(i.src))},
-            renderSongList(songs=this.state.songs,container=this.dom.songList){const id=container.id;if(container===this.dom.songList)this.dom.libraryEmptyState.classList.toggle('hidden',this.state.songs.length>0);if(songs.length===0){if(this.virtualScrollers[id]){VirtualScroller.destroy(id);this.virtualScrollers[id]=null}container.innerHTML='';return}const scroller=VirtualScroller.get(id);if(scroller)scroller.setData(songs);else{this.virtualScrollers[id]=VirtualScroller.create(id,{itemHeight:68,buffer:10,data:songs,renderItem:s=>{const t=this.dom.songItemTemplate.content.cloneNode(!0),i=t.querySelector('.song-item');i.dataset.songId=s.id;if(s.coverBlob)i.querySelector('.song-cover').src=URL.createObjectURL(s.coverBlob);i.querySelector('.song-title').textContent=s.title;i.querySelector('.song-artist').textContent=s.artist||'Desconhecido';i.querySelector('.offline-indicator').classList.toggle('hidden',!s.isOffline);if(s.id===this.state.songs[this.state.currentSongIndex]?.id)i.classList.add('playing');const w=document.createElement('div');w.appendChild(t);return w.firstElementChild}})}this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id)},
+            renderSongList: function(songs = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
+                const containerId = container.id;
+                
+                if (this.virtualScrollers[containerId]) {
+                    VirtualScroller.destroy(containerId);
+                    this.virtualScrollers[containerId] = null;
+                }
+
+                if (container === this.dom.songList) {
+                    this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
+                }
+
+                if (songs.length === 0) {
+                    container.innerHTML = '';
+                    return;
+                }
+
+                this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
+                    itemHeight: 68,
+                    buffer: 10,
+                    data: songs,
+                    renderItem: (song, index) => {
+                        const template = this.dom.songItemTemplate.content.cloneNode(true);
+                        const item = template.querySelector('.song-item');
+                        const cover = template.querySelector('.song-cover');
+
+                        item.dataset.songId = song.id;
+                        
+                        if (song.coverBlob) {
+                            cover.src = URL.createObjectURL(song.coverBlob);
+                        } else {
+                            cover.src = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                        }
+                        
+                        template.querySelector('.song-title').textContent = song.title;
+                        template.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                        template.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
+
+                        if (song.id === this.state.songs[this.state.currentSongIndex]?.id) {
+                            item.classList.add('playing');
+                        }
+                        
+                        const wrapper = document.createElement('div');
+                        wrapper.appendChild(template);
+                        return wrapper.firstElementChild;
+                    }
+                });
+                
+                this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
+            },
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid);this.dom.playlistGrid.innerHTML="";const f=document.createDocumentFragment();this.state.playlists.forEach(p=>{const t=this.dom.playlistItemTemplate.content.cloneNode(!0),e=t.querySelector(".playlist-item-grid-entry"),i=t.querySelector(".playlist-cover");e.dataset.id=p.id;t.querySelector(".playlist-name").textContent=p.name;t.querySelector(".playlist-song-count").textContent=`${p.songIds.length} música${p.songIds.length!==1?"s":""}`;const s=p.songIds.length>0?this.state.songs.find(s=>s.id===p.songIds[0]):null;if(s?.coverBlob)i.src=URL.createObjectURL(s.coverBlob);f.appendChild(t)});this.dom.playlistGrid.appendChild(f)},
             renderPlaylistSelectionList(){this.dom.playlistSelectionList.innerHTML="";const id=this.state.songIdForOptions;if(this.state.playlists.length===0){this.dom.playlistSelectionList.innerHTML='<p class="text-zinc-400 text-center p-4">Nenhuma playlist.</p>';return}const f=document.createDocumentFragment();this.state.playlists.forEach(p=>{const b=document.createElement('button'),isIn=p.songIds.includes(id);b.className=`w-full flex items-center justify-between p-4 hover:bg-zinc-700 rounded-lg text-left ${isIn?'opacity-60 cursor-not-allowed':''}`;b.dataset.playlistId=p.id;b.disabled=isIn;b.innerHTML=`<span>${p.name}</span>`+(isIn?'<i class="fas fa-check text-green-500"></i>':'');f.appendChild(b)});this.dom.playlistSelectionList.appendChild(f)}
         };
