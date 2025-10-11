@@ -488,7 +488,7 @@
                 playlistPlayBtn: document.getElementById('playlist-play-btn'),
                 playlistShuffleBtn: document.getElementById('playlist-shuffle-btn'),
                 playlistDownloadAllBtn: document.getElementById('playlist-download-all-btn'),
-                playlistEmptyState: document.getElementById('playlist-empty-state'), // Mapeado
+                playlistEmptyState: document.getElementById('playlist-empty-state'),
                 songOptionsModal: document.getElementById('song-options-modal'),
                 optionsModalTitle: document.getElementById('options-modal-title'),
                 optionsModalArtist: document.getElementById('options-modal-artist'),
@@ -525,6 +525,7 @@
                 viewOrder: ['search-view', 'player-view', 'playlists-view'],
                 currentObjectUrl: null,
                 currentPlayerCoverUrl: null,
+                currentPlaylistCoverUrl: null,
                 debounceTimer: null,
                 songIdForOptions: null,
                 isPlaylistContextForOptions: false,
@@ -1205,7 +1206,6 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
-            // ✅ CÓDIGO CORRIGIDO APLICADO AQUI
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
                 let filteredSongs;
@@ -1237,17 +1237,14 @@
 
                 const scroller = VirtualScroller.get('song-list');
                 if (scroller) {
-                    // Trata o caso de a busca não retornar resultados
                     if (filteredSongs.length === 0) {
                         VirtualScroller.destroy('song-list');
                         this.virtualScrollers.songList = null;
                     } else {
-                        // Atualiza os dados e reseta o scroll para o topo
                         scroller.setData(filteredSongs);
                         scroller.scrollToIndex(0);
                     }
                 } else if (filteredSongs.length > 0) {
-                    // Se não houver scroller (ex: após busca vazia), recria a lista
                     this.renderSongList(filteredSongs);
                 }
             },
@@ -1342,6 +1339,7 @@
                     await this.loadPlaylistsFromDB();
                 })
             },
+            
             showPlaylistDetails(playlistId) {
                 this.state.currentPlaylistId = playlistId;
                 const playlist = this.state.playlists.find(p => p.id === playlistId);
@@ -1355,10 +1353,17 @@
 
                 this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${totalMinutes} min`;
 
+                if (this.state.currentPlaylistCoverUrl) {
+                    URL.revokeObjectURL(this.state.currentPlaylistCoverUrl);
+                    this.state.currentPlaylistCoverUrl = null;
+                }
+
                 const firstSong = songsInPlaylist[0];
                 const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
+                
                 if (highResCover) {
-                    this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
+                    this.state.currentPlaylistCoverUrl = URL.createObjectURL(highResCover);
+                    this.dom.playlistDetailsCoverImg.src = this.state.currentPlaylistCoverUrl;
                     this.dom.playlistDetailsCoverImg.classList.remove("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.add("hidden");
                 } else {
