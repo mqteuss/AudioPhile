@@ -970,12 +970,14 @@
                 this.dom.syncBtn.disabled = true;
             
                 try {
+                    // 1. Buscar manifesto do servidor
                     const response = await fetch('./musics-manifest.json');
                     if (!response.ok) {
                         throw new Error(`Falha ao buscar o manifesto: ${response.statusText}`);
                     }
                     const serverSongPaths = await response.json();
             
+                    // 2. Usar Map para comparações O(1) - muito mais rápido
                     const existingPathsMap = new Map(
                         this.state.songs
                             .filter(s => s.path)
@@ -983,10 +985,12 @@
                     );
                     const serverPathsSet = new Set(serverSongPaths);
             
+                    // 3. Identificar diferenças de forma eficiente
                     const newPaths = serverSongPaths.filter(path => !existingPathsMap.has(path));
                     const songsToRemove = Array.from(existingPathsMap.values())
                         .filter(song => !serverPathsSet.has(song.path));
             
+                    // 4. Retornar cedo se não houver mudanças
                     if (newPaths.length === 0 && songsToRemove.length === 0) {
                         this.showToast('Catálogo já está atualizado.', 'info');
                         console.log("✅ Catálogo já está atualizado.");
@@ -995,6 +999,7 @@
             
                     console.log(`🔄 Sincronização: ${newPaths.length} novas, ${songsToRemove.length} para remover`);
             
+                    // 5. Processar remoções em UMA ÚNICA TRANSAÇÃO (muito mais performático)
                     if (songsToRemove.length > 0) {
                         console.log(`🗑️ Removendo ${songsToRemove.length} músicas obsoletas...`);
                         
@@ -1008,11 +1013,11 @@
                                 if (song.isOffline) {
                                     cachePromises.push(this._removeSongFromCache(song));
                                 }
-                                store.delete(song.id);
+                                store.delete(song.id); // Deleta do DB na mesma transação
                             }
                             
                             transaction.oncomplete = async () => {
-                                await Promise.all(cachePromises);
+                                await Promise.all(cachePromises); // Limpa o cache após o DB confirmar
                                 resolve();
                             };
                             transaction.onerror = reject;
@@ -1021,10 +1026,11 @@
                         console.log(`✅ ${songsToRemove.length} músicas removidas.`);
                     }
             
+                    // 6. Processar novas músicas em lotes para não sobrecarregar o navegador
                     if (newPaths.length > 0) {
                         console.log(`🔎 Processando ${newPaths.length} novas músicas...`);
                         
-                        const BATCH_SIZE = 5;
+                        const BATCH_SIZE = 5; // Limite de requisições simultâneas
                         let processed = 0;
                         
                         for (let i = 0; i < newPaths.length; i += BATCH_SIZE) {
@@ -1055,11 +1061,13 @@
                         console.log(`✅ ${processed} novas músicas adicionadas.`);
                     }
             
+                    // 7. Atualizar a interface apenas uma vez no final
                     this.showToast('Catálogo sincronizado!', 'success');
                     console.log("🎶 Recarregando catálogo...");
                     
                     await this.loadSongsFromDB();
                     
+                    // Só recarrega playlists se músicas foram removidas (pois podem ter sido afetadas)
                     if (songsToRemove.length > 0) {
                         await this.loadPlaylistsFromDB();
                     }
@@ -1571,9 +1579,7 @@
 
             renderPlaylistGrid(){
                 const grid = this.dom.playlistGrid;
-                // ✅ BUG FIX: A linha abaixo, que revogava URLs prematuramente, foi removida.
-                // grid.querySelectorAll('img').forEach(img => { ... });
-
+                
                 grid.innerHTML="";
                 const fragment = document.createDocumentFragment();
                 this.state.playlists.forEach(playlist => {
