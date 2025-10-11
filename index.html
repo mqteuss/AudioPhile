@@ -978,88 +978,9 @@
             async _addSongToCacheFromPath(song) {
                 const cache = await this._getAudioCache();
                 const key = this._getCacheKey(song);
-                
-                try {
-                    // Usa streaming para baixar diretamente no cache sem carregar tudo na memória
-                    const response = await fetch(key);
-                    if (!response.ok) {
-                        throw new Error(`Falha ao baixar: ${response.statusText}`);
-                    }
-                    
-                    // Clone a resposta para não interferir no stream
-                    const responseToCache = response.clone();
-                    
-                    // Armazena diretamente no cache (sem passar pela memória)
-                    await cache.put(key, responseToCache);
-                    
-                    return true;
-                } catch (error) {
-                    console.error(`Erro ao cachear ${song.title}:`, error);
-                    throw error;
-                }
-            },
-            
-            // NOVO: Método para download com progresso
-            async _addSongToCacheWithProgress(song, onProgress) {
-                const cache = await this._getAudioCache();
-                const key = this._getCacheKey(song);
-                
-                try {
-                    const response = await fetch(key);
-                    if (!response.ok) {
-                        throw new Error(`Falha ao baixar: ${response.statusText}`);
-                    }
-                    
-                    const contentLength = response.headers.get('content-length');
-                    const total = parseInt(contentLength, 10);
-                    let loaded = 0;
-                    
-                    // Cria um ReadableStream para acompanhar o progresso
-                    const reader = response.body.getReader();
-                    const stream = new ReadableStream({
-                        async start(controller) {
-                            while (true) {
-                                const { done, value } = await reader.read();
-                                
-                                if (done) {
-                                    controller.close();
-                                    break;
-                                }
-                                
-                                loaded += value.byteLength;
-                                
-                                // Callback de progresso
-                                if (onProgress && total) {
-                                    const progress = (loaded / total) * 100;
-                                    onProgress(progress, loaded, total);
-                                }
-                                
-                                controller.enqueue(value);
-                            }
-                        }
-                    });
-                    
-                    // Cria nova resposta com o stream customizado
-                    const newResponse = new Response(stream, {
-                        headers: response.headers
-                    });
-                    
-                    await cache.put(key, newResponse);
-                    return true;
-                    
-                } catch (error) {
-                    console.error(`Erro ao cachear ${song.title}:`, error);
-                    throw error;
-                }
-            },
-
-            // NOVO: Formatador de tamanho de arquivo
-            _formatFileSize(bytes) {
-                if (bytes === 0) return '0 B';
-                const k = 1024;
-                const sizes = ['B', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                const response = await fetch(key);
+                if (!response.ok) throw new Error(`Falha ao baixar para cache: ${response.statusText}`);
+                await cache.put(key, response);
             },
             async _removeSongFromCache(song) {
                 const cache = await this._getAudioCache();
@@ -1076,59 +997,32 @@
                 const songId = songIdToToggle || this.state.songIdForOptions;
                 const song = this.state.songs.find(s => s.id === songId);
                 if (!song) return;
-            
+
                 const download = async () => {
-                    if (!song.path) {
-                        console.warn("Tentativa de baixar música local sem um path.");
-                        if (showFeedback) this.showToast('Música local não pode ser baixada.', 'error');
-                        return false;
-                    }
-            
-                    let toastElement = null;
-                    
+                    if (showFeedback) this.showToast(`Baixando "${song.title}"...`, 'info', 2000);
                     try {
-                        // Cria toast com progresso
-                        if (showFeedback) {
-                            toastElement = this.showDownloadToast(song.title, 0);
+                        if (song.path) {
+                            await this._addSongToCacheFromPath(song);
+                        } else {
+                            console.warn("Tentativa de baixar música local sem um blob de origem.");
+                            if (showFeedback) this.showToast('Falha ao baixar música local.', 'error');
+                            return false;
                         }
-            
-                        // Download com progresso
-                        await this._addSongToCacheWithProgress(song, (progress, loaded, total) => {
-                            if (toastElement) {
-                                this.updateDownloadToast(toastElement, progress, loaded, total);
-                            }
-                        });
-            
                         song.isOffline = true;
                         await this.saveSongMetadataToDB(song);
-                        
-                        if (showFeedback) {
-                            this.removeDownloadToast(toastElement);
-                            this.showToast('Música disponível offline.', 'success');
-                        }
-                        
+                        if (showFeedback) this.showToast('Música disponível offline.', 'success');
                         return true;
-                        
                     } catch (error) {
-                        console.error("Erro no download:", error);
-                        
-                        if (toastElement) {
-                            this.removeDownloadToast(toastElement);
-                        }
-                        
-                        if (showFeedback) {
-                            this.showToast('Erro ao baixar música.', 'error');
-                        }
-                        
+                        console.error("Erro no download para o cache:", error);
+                        if (showFeedback) this.showToast('Erro ao baixar música.', 'error');
                         song.isOffline = false;
                         await this.saveSongMetadataToDB(song);
                         return false;
-                        
                     } finally {
                         this.updateSongItemUI(songId);
                     }
                 };
-            
+
                 if (song.isOffline) {
                     const removeAction = async () => {
                         await this._removeSongFromCache(song);
@@ -1137,74 +1031,15 @@
                         if (showFeedback) this.showToast('Música removida do offline.', 'info');
                         this.updateSongItemUI(songId);
                     };
-            
+
                     if (!songIdToToggle) {
-                        this.showConfirmationModal(
-                            `Deseja remover a versão offline de "${song.title}"?`, 
-                            removeAction
-                        );
+                        this.showConfirmationModal(`Deseja remover a versão offline de "${song.title}"?`, removeAction);
                     } else {
                         await removeAction();
                     }
                 } else {
                     await download();
                 }
-            },
-
-            showDownloadToast(songTitle, progress) {
-                const toast = document.createElement('div');
-                toast.className = 'flex flex-col gap-2 text-white text-sm font-semibold p-3 rounded-lg shadow-2xl bg-zinc-700 toast-in min-w-[280px]';
-                toast.dataset.downloadToast = 'true';
-                
-                toast.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-download text-lg"></i>
-                        <div class="flex-grow">
-                            <p class="truncate">${songTitle}</p>
-                            <p class="text-xs text-zinc-400 mt-1">
-                                <span class="download-progress">0%</span> • 
-                                <span class="download-size">0 B / 0 B</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div class="w-full bg-zinc-600 rounded-full h-1.5 overflow-hidden">
-                        <div class="download-bar bg-green-500 h-1.5 transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                `;
-                
-                this.dom.toastContainer.appendChild(toast);
-                return toast;
-            },
-
-            updateDownloadToast(toast, progress, loaded, total) {
-                if (!toast) return;
-                
-                const progressText = toast.querySelector('.download-progress');
-                const sizeText = toast.querySelector('.download-size');
-                const progressBar = toast.querySelector('.download-bar');
-                
-                if (progressText) {
-                    progressText.textContent = `${Math.round(progress)}%`;
-                }
-                
-                if (sizeText) {
-                    sizeText.textContent = `${this._formatFileSize(loaded)} / ${this._formatFileSize(total)}`;
-                }
-                
-                if (progressBar) {
-                    progressBar.style.width = `${progress}%`;
-                }
-            },
-
-            removeDownloadToast(toast) {
-                if (!toast) return;
-                
-                toast.classList.remove('toast-in');
-                toast.classList.add('toast-out');
-                
-                setTimeout(() => {
-                    toast.remove();
-                }, 400);
             },
 
             updateSongItemUI(songId) {
@@ -1562,70 +1397,30 @@
             async downloadPlaylist() {
                 const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
                 if (!playlist) return;
-                
                 const songsToDownload = playlist.songIds
                     .map(id => this.state.songs.find(s => s.id === id))
-                    .filter(song => song && !song.isOffline && song.path);
-            
+                    .filter(song => song && !song.isOffline);
+
                 if (songsToDownload.length === 0) {
                     this.showToast('Todas as músicas já estão offline.', 'info');
                     return;
                 }
-            
+
                 const btn = this.dom.playlistDownloadAllBtn;
                 const originalIcon = btn.innerHTML;
                 btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
                 btn.disabled = true;
-            
-                this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
-            
-                try {
-                    // Download paralelo com limite de 3 downloads simultâneos
-                    const downloadQueue = [...songsToDownload];
-                    const activeDownloads = [];
-                    const maxConcurrent = 3;
-                    let completed = 0;
-            
-                    const processQueue = async () => {
-                        while (downloadQueue.length > 0) {
-                            const song = downloadQueue.shift();
-                            const downloadPromise = this.toggleSongOfflineStatus(song.id, true)
-                                .then(() => {
-                                    completed++;
-                                    console.log(`✅ ${completed}/${songsToDownload.length} concluídos`);
-                                    const index = activeDownloads.indexOf(downloadPromise);
-                                    if (index > -1) {
-                                        activeDownloads.splice(index, 1);
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error(`❌ Erro ao baixar ${song.title}:`, err);
-                                    const index = activeDownloads.indexOf(downloadPromise);
-                                    if (index > -1) {
-                                        activeDownloads.splice(index, 1);
-                                    }
-                                });
-                            
-                            activeDownloads.push(downloadPromise);
-            
-                            if (activeDownloads.length >= maxConcurrent) {
-                                await Promise.race(activeDownloads);
-                            }
-                        }
-                        await Promise.all(activeDownloads);
-                    };
 
-                    await processQueue();
-            
-                    this.showToast('Download da playlist concluído!', 'success');
-                    
-                } catch (error) {
-                    console.error('Erro no download da playlist:', error);
-                    this.showToast('Erro ao baixar algumas músicas.', 'error');
-                } finally {
-                    btn.innerHTML = originalIcon;
-                    btn.disabled = false;
+                this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
+
+                for (const song of songsToDownload) {
+                    await this.toggleSongOfflineStatus(song.id, false); 
                 }
+
+                btn.innerHTML = originalIcon;
+                btn.disabled = false;
+
+                this.showToast('Download da playlist concluído!', 'success');
             },
 
             updatePlayingSongUI(playingSongId) {
