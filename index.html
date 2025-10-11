@@ -827,7 +827,6 @@
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
                 
-                // --- CÓDIGO CORRIGIDO ---
                 this.dom.songList.addEventListener('click', e => {
                     const scroller = VirtualScroller.get('song-list');
                     const songs = scroller ? scroller.config.data : this.state.songs;
@@ -840,7 +839,6 @@
                         this.handleSongListClick(e, scroller.config.data, true);
                     }
                 });
-                // --- FIM DA CORREÇÃO ---
 
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
@@ -1526,6 +1524,7 @@
                 })
             },
             
+            // --- CÓDIGO CORRIGIDO ---
             showPlaylistDetails(playlistId) {
                 this.state.currentPlaylistId = playlistId;
                 const playlist = this.state.playlists.find(p => p.id === playlistId);
@@ -1542,6 +1541,9 @@
                 const firstSong = songsInPlaylist[0];
                 const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
                 if (highResCover) {
+                    if (this.dom.playlistDetailsCoverImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(this.dom.playlistDetailsCoverImg.src);
+                    }
                     this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
                     this.dom.playlistDetailsCoverImg.classList.remove("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.add("hidden");
@@ -1553,9 +1555,7 @@
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
-                if (songCount > 0) {
-                    this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
-                }
+                this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
 
                 this.switchView("playlist-details-view");
             },
@@ -1581,7 +1581,6 @@
                 this.showToast(`Baixando ${songsToDownload.length} música(s)...`, 'info');
             
                 try {
-                    // Download paralelo com limite de 3 downloads simultâneos
                     const downloadQueue = [...songsToDownload];
                     const activeDownloads = [];
                     const maxConcurrent = 3;
@@ -1759,6 +1758,8 @@
                     }
                 });
             },
+            
+            // --- CÓDIGO CORRIGIDO ---
             renderSongList: function(songs = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 const containerId = container.id;
                 
@@ -1770,9 +1771,10 @@
                 if (container === this.dom.songList) {
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
+                
+                container.innerHTML = '';
 
                 if (songs.length === 0) {
-                    container.innerHTML = '';
                     return;
                 }
 
