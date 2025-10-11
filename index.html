@@ -530,7 +530,9 @@
                 isPlaylistContextForOptions: false,
                 confirmationCallback: null,
                 playlistIdToEdit: null,
-                activeToastTimeout: null, 
+                activeToastTimeout: null,
+                // ✅ ARQUITETURA FINAL: Cache global de URLs gerenciado pelo App
+                coverUrlCache: new Map(),
             },
 
             audio: new Audio(),
@@ -540,6 +542,30 @@
             virtualScrollers: {
                 songList: null,
                 playlistSongList: null
+            },
+            
+            // ✅ ARQUITETURA FINAL: Método para obter/criar URLs de forma centralizada
+            getCoverUrl(song) {
+                if (!song || !song.coverBlob) {
+                    return 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                }
+
+                if (this.state.coverUrlCache.has(song.id)) {
+                    return this.state.coverUrlCache.get(song.id);
+                }
+
+                const url = URL.createObjectURL(song.coverBlob);
+                this.state.coverUrlCache.set(song.id, url);
+                return url;
+            },
+
+            // ✅ ARQUITETURA FINAL: Método para limpar o cache ao sair da página
+            cleanupCoverUrls() {
+                for (const url of this.state.coverUrlCache.values()) {
+                    URL.revokeObjectURL(url);
+                }
+                this.state.coverUrlCache.clear();
+                console.log('Cache de URLs de capa limpo.');
             },
 
             createThumbnail(imageBlob, width = 100, height = 100) {
@@ -643,7 +669,13 @@
                 this.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
                 this.audio.addEventListener('pause', () => this.savePlaybackState());
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
-                window.addEventListener('beforeunload', () => this.savePlaybackState());
+                
+                // ✅ ARQUITETURA FINAL: Limpa o cache ao fechar a aba/navegador
+                window.addEventListener('beforeunload', () => {
+                    this.savePlaybackState();
+                    this.cleanupCoverUrls();
+                });
+
                 this.dom.addMusicBtn.addEventListener('click', () => this.dom.musicFolderInput.click());
                 this.dom.syncBtn.addEventListener('click', () => this.syncWithServerFolder());
                 this.dom.musicFolderInput.addEventListener('change', e => this.addMusicFiles(e.target.files));
@@ -684,14 +716,20 @@
                 this.dom.playlistShuffleBtn.addEventListener('click', () => this.playPlaylist(true));
                 this.dom.playlistDownloadAllBtn.addEventListener('click', () => this.downloadPlaylist());
                 this.dom.editPlaylistTitleBtn.addEventListener('click', () => this.openRenamePlaylistModal(this.state.currentPlaylistId));
-                this.dom.songList.addEventListener('click', e => this.handleSongListClick(e, this.state.songs, false));
+                
+                this.dom.songList.addEventListener('click', e => {
+                    const scroller = VirtualScroller.get('song-list');
+                    const songs = scroller ? scroller.config.data : this.state.songs;
+                    this.handleSongListClick(e, songs, false);
+                });
+
                 this.dom.playlistSongList.addEventListener('click', e => {
-                    const playlist = this.state.playlists.find(p => p.id === this.state.currentPlaylistId);
-                    if(playlist) {
-                        const songs = this.state.songs.filter(s => playlist.songIds.includes(s.id));
-                        this.handleSongListClick(e, songs, true);
+                    const scroller = VirtualScroller.get('playlist-song-list');
+                    if (scroller) {
+                        this.handleSongListClick(e, scroller.config.data, true);
                     }
                 });
+
                 this.dom.appContent.addEventListener('touchstart', e => this.handleTouchStart(e), false);
                 this.dom.appContent.addEventListener('touchmove', e => this.handleTouchMove(e), false);
                 this.dom.appContent.addEventListener('touchend', () => this.handleTouchEnd(), false);
@@ -935,13 +973,11 @@
                 this.dom.syncBtn.disabled = true;
 
                 try {
-                    // MODIFICAÇÃO: Carrega a lista de músicas de um arquivo JSON externo.
                     const response = await fetch('./musics-manifest.json');
                     if (!response.ok) {
                         throw new Error(`Falha ao buscar o manifesto de músicas: ${response.statusText}`);
                     }
                     const serverSongPaths = await response.json();
-                    // FIM DA MODIFICAÇÃO
 
                     const existingPaths = new Set(this.state.songs.map(song => song.path));
                     const serverPathsSet = new Set(serverSongPaths);
@@ -1117,7 +1153,6 @@
                     this.dom.libraryEmptyText.innerHTML = 'Use o botão <i class="fas fa-folder-plus"></i> para começar.';
                 }
 
-                // Update virtual scroller with filtered data
                 const scroller = VirtualScroller.get('song-list');
                 if (scroller) {
                     scroller.setData(filteredSongs);
@@ -1402,14 +1437,6 @@
             async loadPlaylistsFromDB(){return new Promise((e,t)=>{const s=this.db.transaction(["playlists"],"readonly"),o=s.objectStore("playlists"),i=o.getAll();i.onsuccess=t=>{this.state.playlists=t.target.result,this.renderPlaylistGrid(),e(this.state.playlists)},i.onerror=t})},
             async deletePlaylistFromDB(e){return new Promise((t,s)=>{const o=this.db.transaction(["playlists"],"readwrite"),i=o.objectStore("playlists"),a=i.delete(e);a.onsuccess=t,a.onerror=s})},
             
-            cleanupItemURLs(element) {
-                element.querySelectorAll('img').forEach(img => {
-                    if (img.src.startsWith('blob:')) {
-                        URL.revokeObjectURL(img.src);
-                    }
-                });
-            },
-            
             renderSongList(songs = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 const containerId = container.id;
                 
@@ -1425,7 +1452,7 @@
                 if (songs.length === 0) return;
             
                 this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
-                    itemHeight: 68, // p-3 -> 12px + 12px = 24px | h-12 -> 48px | gap-3 -> 12px. Total item height is 68px.
+                    itemHeight: 68,
                     buffer: 10,
                     data: songs,
                     renderItem: (song, index) => {
@@ -1435,11 +1462,8 @@
             
                         item.dataset.songId = song.id;
                         
-                        if (song.coverBlob) {
-                            cover.src = URL.createObjectURL(song.coverBlob);
-                        } else {
-                            cover.src = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
-                        }
+                        // ✅ ARQUITETURA FINAL: Consome a URL do cache global do App
+                        cover.src = this.getCoverUrl(song);
             
                         template.querySelector('.song-title').textContent = song.title;
                         template.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
@@ -1458,7 +1482,6 @@
 
             renderPlaylistGrid(){
                 const grid = this.dom.playlistGrid;
-                // Cleanup previous blob URLs
                 grid.querySelectorAll('img').forEach(img => {
                     if (img.src.startsWith('blob:')) {
                         URL.revokeObjectURL(img.src);
@@ -1479,8 +1502,8 @@
                     let coverSrc = "https://placehold.co/100x100/101010/1DB954?text=PLAY";
                     if(playlist.songIds.length > 0) {
                         const firstSong = this.state.songs.find(s => s.id === playlist.songIds[0]);
-                        if(firstSong && firstSong.coverBlob) {
-                            coverSrc = URL.createObjectURL(firstSong.coverBlob);
+                        if(firstSong) {
+                           coverSrc = this.getCoverUrl(firstSong); // Usa o cache aqui também
                         }
                     }
                     
@@ -1548,14 +1571,14 @@
         
                     init() {
                         this.setupDOM();
-                        this.update();
+                        this.setData(this.config.data);
                         this.bindEvents();
                     },
         
                     setupDOM() {
                         this.config.container.innerHTML = '';
                         this.config.container.style.position = 'relative';
-                        this.config.container.style.overflowY = 'auto'; // Garante scroll vertical
+                        this.config.container.style.overflowY = 'auto';
                         this.config.container.style.overflowX = 'hidden';
         
                         this.viewport = document.createElement('div');
@@ -1600,7 +1623,6 @@
                         for (const [index, element] of this.visibleItems) {
                             if (index < this.startIndex || index > this.endIndex) {
                                 element.remove();
-                                App.cleanupItemURLs(element);
                             } else {
                                 newVisibleItems.set(index, element);
                             }
@@ -1623,9 +1645,12 @@
                         this.visibleItems = newVisibleItems;
                     },
         
+                    // ✅ ARQUITETURA FINAL: Simplificado para apenas receber os dados.
                     setData(newData) {
                         this.config.data = newData;
-                        this.viewport.style.height = `${newData.length * this.config.itemHeight}px`;
+                        if (this.viewport) {
+                           this.viewport.style.height = `${newData.length * this.config.itemHeight}px`;
+                        }
                         this.visibleItems.forEach(el => el.remove());
                         this.visibleItems.clear();
                         this.update();
@@ -1636,11 +1661,9 @@
                         this.config.container.scrollTop = index * itemHeight;
                     },
         
+                    // ✅ ARQUITETURA FINAL: Simplificado, sem gerenciamento de URLs.
                     destroy() {
-                        this.visibleItems.forEach(el => {
-                            App.cleanupItemURLs(el);
-                            el.remove();
-                        });
+                        this.visibleItems.forEach(el => el.remove());
                         this.visibleItems.clear();
                         this.config.container.innerHTML = '';
                     }
