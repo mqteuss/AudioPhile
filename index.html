@@ -1028,7 +1028,7 @@
             
                     // 6. Processar novas músicas em lotes para não sobrecarregar o navegador
                     if (newPaths.length > 0) {
-                        console.log(`🔎 Processando ${newPaths.length} novas músicas...`);
+                        console.log(`?? Processando ${newPaths.length} novas músicas...`);
                         
                         const BATCH_SIZE = 5; // Limite de requisições simultâneas
                         let processed = 0;
@@ -1510,7 +1510,72 @@
                     });
                 });
             },
-            async readRemoteAudioMetadata(e){try{const t=await fetch(e);if(!t.ok)throw new Error(`Erro HTTP ao carregar ${e}: ${t.status}`);const s=await t.blob();return await this.readAudioMetadata(s)}catch(o){console.error("Erro Crítico ao processar arquivo remoto:",o);const i=e.split("/").pop();return{title:i.replace(/\.[^/.]+$/,""),artist:"Artista Desconhecido",album:null,coverBlob:null,duration:0}}},
+            
+            async readRemoteAudioMetadata(path) {
+                try {
+                    // Baixa apenas os primeiros 256KB (suficiente para ID3v2)
+                    const response = await fetch(path, {
+                        headers: { 'Range': 'bytes=0-262143' }
+                    });
+                    
+                    if (!response.ok && response.status !== 206) throw new Error(`Erro HTTP: ${response.status}`);
+                    
+                    const partialBlob = await response.blob();
+                    
+                    return new Promise((resolve, reject) => {
+                        jsmediatags.read(partialBlob, {
+                            onSuccess: async (tag) => {
+                                const { title, artist, album, picture } = tag.tags;
+                                let thumbnailBlob = null;
+                                let artworkBlob = null;
+                                
+                                if (picture) {
+                                    const originalCover = new Blob([new Uint8Array(picture.data)], { type: picture.format });
+                                    try {
+                                        [thumbnailBlob, artworkBlob] = await Promise.all([
+                                            this.createThumbnail(originalCover, 100, 100),
+                                            this.createThumbnail(originalCover, 512, 512)
+                                        ]);
+                                    } catch(e) {
+                                        console.error("Erro ao criar thumbnails para", path, e);
+                                    }
+                                }
+                                
+                                resolve({
+                                    title: title || path.split("/").pop().replace(/\.[^/.]+$/, ""),
+                                    artist: artist || "Artista Desconhecido",
+                                    album: album,
+                                    coverBlob: thumbnailBlob,
+                                    artworkBlob: artworkBlob,
+                                    duration: 0 // Será obtida no primeiro play
+                                });
+                            },
+                            onError: (error) => {
+                                console.warn("Erro ao ler metadados de", path, error);
+                                resolve({
+                                    title: path.split("/").pop().replace(/\.[^/.]+$/, ""),
+                                    artist: "Artista Desconhecido",
+                                    album: null,
+                                    coverBlob: null,
+                                    artworkBlob: null,
+                                    duration: 0
+                                });
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.error("Erro ao processar arquivo remoto:", path, error);
+                    return {
+                        title: path.split("/").pop().replace(/\.[^/.]+$/, ""),
+                        artist: "Artista Desconhecido",
+                        album: null,
+                        coverBlob: null,
+                        artworkBlob: null,
+                        duration: 0
+                    };
+                }
+            },
+
             async saveSongMetadataToDB(e,t=!1){return this.db||await this.initDB(),new Promise((s,o)=>{const i=this.db.transaction(["songs"],"readwrite"),a=i.objectStore("songs"),n=a.put(e);n.onsuccess=e=>s(t?e.target.result:void 0),n.onerror=o})},
             
             async deleteSongFromDB(songId) {
