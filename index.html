@@ -1299,7 +1299,6 @@
                 }
             },
 
-            // --- CÓDIGO CORRIGIDO ---
             switchView(viewId) {
                 // Se estiver saindo da view de detalhes da playlist, limpa recursos
                 if (document.getElementById('playlist-details-view').classList.contains('active') && viewId !== 'playlist-details-view') {
@@ -1542,7 +1541,6 @@
                 })
             },
             
-            // --- CÓDIGO CORRIGIDO ---
             showPlaylistDetails(playlistId) {
                 this.state.currentPlaylistId = playlistId;
                 const playlist = this.state.playlists.find(p => p.id === playlistId);
@@ -1556,7 +1554,6 @@
 
                 this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${totalMinutes} min`;
 
-                // CORREÇÃO: Limpa URL anterior da capa antes de criar nova
                 const firstSong = songsInPlaylist[0];
                 const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
                 if (highResCover) {
@@ -1578,7 +1575,6 @@
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
-                // CORREÇÃO: Sempre renderiza a lista (mesmo vazia)
                 this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
 
                 this.switchView("playlist-details-view");
@@ -1783,7 +1779,7 @@
                 });
             },
             
-            // --- CÓDIGO CORRIGIDO ---
+            // --- CÓDIGO CORRIGIDO E ATUALIZADO ---
             renderSongList: function(songs = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 const containerId = container.id;
                 
@@ -1797,46 +1793,53 @@
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
                 
-                // CORREÇÃO: Limpa o container ANTES de verificar se há músicas
+                // CORREÇÃO CRÍTICA: Força limpeza completa do container
                 container.innerHTML = '';
+                container.style.position = '';
+                container.style.overflow = '';
+                container.style.height = '';
 
                 if (songs.length === 0) {
                     return;
                 }
 
-                this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
-                    itemHeight: 68,
-                    buffer: 10,
-                    data: songs,
-                    renderItem: (song, index) => {
-                        const template = this.dom.songItemTemplate.content.cloneNode(true);
-                        const item = template.querySelector('.song-item');
-                        const cover = template.querySelector('.song-cover');
+                // CORREÇÃO: Pequeno delay para garantir que o DOM foi limpo
+                requestAnimationFrame(() => {
+                    this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
+                        itemHeight: 68,
+                        buffer: 10,
+                        data: songs,
+                        renderItem: (song, index) => {
+                            const template = this.dom.songItemTemplate.content.cloneNode(true);
+                            const item = template.querySelector('.song-item');
+                            const cover = template.querySelector('.song-cover');
 
-                        item.dataset.songId = song.id;
-                        
-                        if (song.coverBlob) {
-                            cover.src = URL.createObjectURL(song.coverBlob);
-                        } else {
-                            cover.src = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
-                        }
-                        
-                        template.querySelector('.song-title').textContent = song.title;
-                        template.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
-                        template.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
+                            item.dataset.songId = song.id;
+                            
+                            if (song.coverBlob) {
+                                cover.src = URL.createObjectURL(song.coverBlob);
+                            } else {
+                                cover.src = 'https://placehold.co/100x100/27272a/3f3f46?text=?';
+                            }
+                            
+                            template.querySelector('.song-title').textContent = song.title;
+                            template.querySelector('.song-artist').textContent = song.artist || 'Artista Desconhecido';
+                            template.querySelector('.offline-indicator').classList.toggle('hidden', !song.isOffline);
 
-                        if (song.id === this.state.songs[this.state.currentSongIndex]?.id) {
-                            item.classList.add('playing');
+                            if (song.id === this.state.songs[this.state.currentSongIndex]?.id) {
+                                item.classList.add('playing');
+                            }
+                            
+                            const wrapper = document.createElement('div');
+                            wrapper.appendChild(template);
+                            return wrapper.firstElementChild;
                         }
-                        
-                        const wrapper = document.createElement('div');
-                        wrapper.appendChild(template);
-                        return wrapper.firstElementChild;
-                    }
+                    });
+                    
+                    this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
                 });
-                
-                this.updatePlayingSongUI(this.state.songs[this.state.currentSongIndex]?.id);
             },
+            
             renderPlaylistGrid(){this.cleanupObjectURLs(this.dom.playlistGrid),this.dom.playlistGrid.innerHTML="";const e=document.createDocumentFragment();this.state.playlists.forEach(t=>{const s=this.dom.playlistItemTemplate.content.cloneNode(!0),o=s.querySelector(".playlist-item-grid-entry"),i=s.querySelector(".playlist-cover");o.dataset.id=t.id,s.querySelector(".playlist-name").textContent=t.name,s.querySelector(".playlist-song-count").textContent=`${t.songIds.length} música${t.songIds.length!==1?"s":""}`;let a="https://placehold.co/100x100/101010/1DB954?text=PLAY";if(t.songIds.length>0){const n=this.state.songs.find(e=>e.id===t.songIds[0]);n&&n.coverBlob&&(a=URL.createObjectURL(n.coverBlob))}i.setAttribute("data-src",a),this.imageObserver.observe(i),e.appendChild(s)}),this.dom.playlistGrid.appendChild(e)},
             renderPlaylistSelectionList() {
                 this.dom.playlistSelectionList.innerHTML = '';
