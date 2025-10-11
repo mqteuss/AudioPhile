@@ -967,57 +967,142 @@
                 const syncIcon = this.dom.syncBtn.querySelector('i');
                 syncIcon.classList.add('fa-spin');
                 this.dom.syncBtn.disabled = true;
-
+            
                 try {
+                    // 1. Buscar manifesto do servidor
                     const response = await fetch('./musics-manifest.json');
                     if (!response.ok) {
-                        throw new Error(`Falha ao buscar o manifesto de músicas: ${response.statusText}`);
+                        throw new Error(`Falha ao buscar o manifesto: ${response.statusText}`);
                     }
                     const serverSongPaths = await response.json();
-
-                    const existingPaths = new Set(this.state.songs.map(song => song.path));
+            
+                    // 2. Criar Sets para comparação O(1)
+                    const existingPathsMap = new Map(
+                        this.state.songs
+                            .filter(s => s.path)
+                            .map(s => [s.path, s])
+                    );
                     const serverPathsSet = new Set(serverSongPaths);
-                    const newPaths = serverSongPaths.filter(path => !existingPaths.has(path));
-                    const pathsToRemove = this.state.songs.filter(song => song.path && !serverPathsSet.has(song.path));
-                    let hasChanges = false;
-
-                    if (newPaths.length > 0) {
-                        hasChanges = true;
-                        console.log(`🔎 Encontradas ${newPaths.length} novas músicas. Processando em paralelo...`);
-                        const newSongsPromises = newPaths.map(async (path) => {
-                            const metadata = await this.readRemoteAudioMetadata(path);
-                            const songData = { ...metadata, path: path, isOffline: false };
-                            await this.saveSongMetadataToDB(songData);
-                        });
-                        await Promise.all(newSongsPromises);
-                        console.log(`✅ ${newPaths.length} novas músicas adicionadas.`);
-                    }
-
-                    if (pathsToRemove.length > 0) {
-                        hasChanges = true;
-                        console.log(`🗑️ Removendo ${pathsToRemove.length} músicas obsoletas em paralelo...`);
-                        const deletePromises = pathsToRemove.map(song => this.deleteSongFromDB(song.id));
-                        await Promise.all(deletePromises);
-                        console.log(`✅ ${pathsToRemove.length} músicas obsoletas removidas.`);
-                    }
-                    
-                    if (hasChanges) {
-                        this.showToast('Catálogo sincronizado!', 'success');
-                        console.log("🎶 Catálogo sincronizado. Recarregando dados...");
-                        await this.loadSongsFromDB();
-                        await this.loadPlaylistsFromDB();
-                    } else {
+            
+                    // 3. Identificar diferenças
+                    const newPaths = serverSongPaths.filter(path => !existingPathsMap.has(path));
+                    const songsToRemove = Array.from(existingPathsMap.values())
+                        .filter(song => !serverPathsSet.has(song.path));
+            
+                    // Se não há mudanças, retornar imediatamente
+                    if (newPaths.length === 0 && songsToRemove.length === 0) {
                         this.showToast('Catálogo já está atualizado.', 'info');
                         console.log("✅ Catálogo já está atualizado.");
+                        return;
                     }
-
+            
+                    console.log(`🔄 Sincronização: ${newPaths.length} novas, ${songsToRemove.length} para remover`);
+            
+                    // 4. Processar remoções em lote (mais rápido que individual)
+                    if (songsToRemove.length > 0) {
+                        console.log(`🗑️ Removendo ${songsToRemove.length} músicas obsoletas...`);
+                        
+                        await new Promise((resolve, reject) => {
+                            const transaction = this.db.transaction(["songs"], "readwrite");
+                            const store = transaction.objectStore("songs");
+                            
+                            // Remover do cache e DB em paralelo
+                            const cachePromises = [];
+                            
+                            for (const song of songsToRemove) {
+                                if (song.isOffline) {
+                                    cachePromises.push(this._removeSongFromCache(song));
+                                }
+                                store.delete(song.id);
+                            }
+                            
+                            transaction.oncomplete = async () => {
+                                await Promise.all(cachePromises);
+                                resolve();
+                            };
+                            transaction.onerror = reject;
+                        });
+                        
+                        console.log(`✅ ${songsToRemove.length} músicas removidas.`);
+                    }
+            
+                    // 5. Processar novas músicas em lotes concorrentes (limite de 5 simultâneas)
+                    if (newPaths.length > 0) {
+                        console.log(`🔎 Processando ${newPaths.length} novas músicas...`);
+                        
+                        const BATCH_SIZE = 5; // Limite de requisições simultâneas
+                        let processed = 0;
+                        
+                        for (let i = 0; i < newPaths.length; i += BATCH_SIZE) {
+                            const batch = newPaths.slice(i, i + BATCH_SIZE);
+                            
+                            await Promise.all(
+                                batch.map(async (path) => {
+                                    try {
+                                        const metadata = await this.readRemoteAudioMetadata(path);
+                                        const songData = { 
+                                            ...metadata, 
+                                            path: path, 
+                                            isOffline: false 
+                                        };
+                                        await this.saveSongMetadataToDB(songData);
+                                        processed++;
+                                        
+                                        // Feedback visual a cada lote
+                                        if (processed % BATCH_SIZE === 0 || processed === newPaths.length) {
+                                            console.log(`⏳ Progresso: ${processed}/${newPaths.length}`);
+                                        }
+                                    } catch (error) {
+                                        console.error(`❌ Erro ao processar ${path}:`, error);
+                                    }
+                                })
+                            );
+                        }
+                        
+                        console.log(`✅ ${processed} novas músicas adicionadas.`);
+                    }
+            
+                    // 6. Atualizar interface apenas uma vez no final
+                    this.showToast('Catálogo sincronizado!', 'success');
+                    console.log("🎶 Recarregando catálogo...");
+                    
+                    await this.loadSongsFromDB();
+                    
+                    // Só recarrega playlists se músicas foram removidas
+                    if (songsToRemove.length > 0) {
+                        await this.loadPlaylistsFromDB();
+                    }
+            
                 } catch (error) {
-                    console.error("Erro ao sincronizar músicas do servidor:", error);
+                    console.error("❌ Erro ao sincronizar:", error);
                     this.showToast('Erro ao sincronizar biblioteca.', 'error');
                 } finally {
                     syncIcon.classList.remove('fa-spin');
                     this.dom.syncBtn.disabled = false;
                 }
+            },
+
+            async precachePopularSongs(limit = 10) {
+                console.log(`📦 Pré-carregando ${limit} músicas mais tocadas...`);
+                
+                // Ordena por algum critério (ex: músicas mais recentes ou mais tocadas)
+                const songsToPrecache = this.state.songs
+                    .filter(s => s.path && !s.isOffline)
+                    .slice(0, limit);
+                
+                for (const song of songsToPrecache) {
+                    try {
+                        await this._addSongToCacheFromPath(song);
+                        song.isOffline = true;
+                        await this.saveSongMetadataToDB(song);
+                        console.log(`✅ Pré-cache: ${song.title}`);
+                    } catch (error) {
+                        console.error(`❌ Falha no pré-cache de ${song.title}:`, error);
+                    }
+                }
+                
+                await this.loadSongsFromDB();
+                this.showToast('Pré-cache concluído!', 'success');
             },
 
             switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
