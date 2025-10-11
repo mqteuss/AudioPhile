@@ -1299,7 +1299,25 @@
                 }
             },
 
-            switchView(e){this.dom.views.forEach(t=>t.classList.toggle("active",t.id===e)),this.dom.navButtons.forEach(t=>{t.dataset.view&&(t.classList.toggle("text-green-500",t.dataset.view===e),t.classList.toggle("text-zinc-400",t.dataset.view!==e))})},
+            // --- CÓDIGO CORRIGIDO ---
+            switchView(viewId) {
+                // Se estiver saindo da view de detalhes da playlist, limpa recursos
+                if (document.getElementById('playlist-details-view').classList.contains('active') && viewId !== 'playlist-details-view') {
+                    const coverImg = this.dom.playlistDetailsCoverImg;
+                    if (coverImg.src && coverImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(coverImg.src);
+                        coverImg.src = "";
+                    }
+                }
+                
+                this.dom.views.forEach(view => view.classList.toggle("active", view.id === viewId));
+                this.dom.navButtons.forEach(btn => {
+                    if (btn.dataset.view) {
+                        btn.classList.toggle("text-green-500", btn.dataset.view === viewId);
+                        btn.classList.toggle("text-zinc-400", btn.dataset.view !== viewId);
+                    }
+                });
+            },
             
             async loadSong(e, t = !1, s = -1) {
                 if (!(e < 0 || e >= this.state.songs.length)) {
@@ -1538,16 +1556,21 @@
 
                 this.dom.playlistDetailsMeta.textContent = `${songCount} música${songCount !== 1 ? 's' : ''}, aprox. ${totalMinutes} min`;
 
+                // CORREÇÃO: Limpa URL anterior da capa antes de criar nova
                 const firstSong = songsInPlaylist[0];
                 const highResCover = firstSong ? (firstSong.artworkBlob || firstSong.coverBlob) : null;
                 if (highResCover) {
-                    if (this.dom.playlistDetailsCoverImg.src.startsWith('blob:')) {
+                    if (this.dom.playlistDetailsCoverImg.src && this.dom.playlistDetailsCoverImg.src.startsWith('blob:')) {
                         URL.revokeObjectURL(this.dom.playlistDetailsCoverImg.src);
                     }
                     this.dom.playlistDetailsCoverImg.src = URL.createObjectURL(highResCover);
                     this.dom.playlistDetailsCoverImg.classList.remove("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.add("hidden");
                 } else {
+                    if (this.dom.playlistDetailsCoverImg.src && this.dom.playlistDetailsCoverImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(this.dom.playlistDetailsCoverImg.src);
+                    }
+                    this.dom.playlistDetailsCoverImg.src = "";
                     this.dom.playlistDetailsCoverImg.classList.add("hidden");
                     this.dom.playlistDetailsCoverIcon.classList.remove("hidden");
                 }
@@ -1555,6 +1578,7 @@
                 this.dom.playlistEmptyState.classList.toggle('hidden', songCount > 0);
                 this.dom.playlistSongList.classList.toggle('hidden', songCount === 0);
                 
+                // CORREÇÃO: Sempre renderiza a lista (mesmo vazia)
                 this.renderSongList(songsInPlaylist, this.dom.playlistSongList, true);
 
                 this.switchView("playlist-details-view");
@@ -1763,6 +1787,7 @@
             renderSongList: function(songs = this.state.songs, container = this.dom.songList, isPlaylistContext = false) {
                 const containerId = container.id;
                 
+                // CORREÇÃO: Sempre destrói o scroller anterior, se existir
                 if (this.virtualScrollers[containerId]) {
                     VirtualScroller.destroy(containerId);
                     this.virtualScrollers[containerId] = null;
@@ -1772,6 +1797,7 @@
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
                 
+                // CORREÇÃO: Limpa o container ANTES de verificar se há músicas
                 container.innerHTML = '';
 
                 if (songs.length === 0) {
