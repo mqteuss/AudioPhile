@@ -531,7 +531,6 @@
                 confirmationCallback: null,
                 playlistIdToEdit: null,
                 activeToastTimeout: null,
-                // ✅ ARQUITETURA FINAL: Cache global de URLs gerenciado pelo App
                 coverUrlCache: new Map(),
             },
 
@@ -544,7 +543,6 @@
                 playlistSongList: null
             },
             
-            // ✅ ARQUITETURA FINAL: Método para obter/criar URLs de forma centralizada
             getCoverUrl(song) {
                 if (!song || !song.coverBlob) {
                     return 'https://placehold.co/100x100/27272a/3f3f46?text=?';
@@ -559,7 +557,6 @@
                 return url;
             },
 
-            // ✅ ARQUITETURA FINAL: Método para limpar o cache ao sair da página
             cleanupCoverUrls() {
                 for (const url of this.state.coverUrlCache.values()) {
                     URL.revokeObjectURL(url);
@@ -670,7 +667,6 @@
                 this.audio.addEventListener('pause', () => this.savePlaybackState());
                 this.audio.addEventListener('volumechange', () => this.savePlaybackState());
                 
-                // ✅ ARQUITETURA FINAL: Limpa o cache ao fechar a aba/navegador
                 window.addEventListener('beforeunload', () => {
                     this.savePlaybackState();
                     this.cleanupCoverUrls();
@@ -1124,6 +1120,7 @@
             toggleShuffle(){this.state.isShuffle=!this.state.isShuffle,this.updateShuffleButtonUI()},
             updateShuffleButtonUI(){this.dom.shuffleBtn.classList.toggle("text-green-500",this.state.isShuffle)},
             
+            // ✅ CÓDIGO CORRIGIDO APLICADO AQUI
             filterSongList(query) {
                 const searchTerm = query.toLowerCase().trim();
                 let filteredSongs;
@@ -1155,7 +1152,18 @@
 
                 const scroller = VirtualScroller.get('song-list');
                 if (scroller) {
-                    scroller.setData(filteredSongs);
+                    // Trata o caso de a busca não retornar resultados
+                    if (filteredSongs.length === 0) {
+                        VirtualScroller.destroy('song-list');
+                        this.virtualScrollers.songList = null;
+                    } else {
+                        // Atualiza os dados e reseta o scroll para o topo
+                        scroller.setData(filteredSongs);
+                        scroller.scrollToIndex(0);
+                    }
+                } else if (filteredSongs.length > 0) {
+                    // Se não houver scroller (ex: após busca vazia), recria a lista
+                    this.renderSongList(filteredSongs);
                 }
             },
             
@@ -1449,7 +1457,10 @@
                     this.dom.libraryEmptyState.classList.toggle('hidden', this.state.songs.length > 0);
                 }
             
-                if (songs.length === 0) return;
+                if (songs.length === 0) {
+                    container.innerHTML = ''; // Limpa o container se não houver musicas
+                    return;
+                }
             
                 this.virtualScrollers[containerId] = VirtualScroller.create(containerId, {
                     itemHeight: 68,
@@ -1462,7 +1473,6 @@
             
                         item.dataset.songId = song.id;
                         
-                        // ✅ ARQUITETURA FINAL: Consome a URL do cache global do App
                         cover.src = this.getCoverUrl(song);
             
                         template.querySelector('.song-title').textContent = song.title;
@@ -1645,7 +1655,6 @@
                         this.visibleItems = newVisibleItems;
                     },
         
-                    // ✅ ARQUITETURA FINAL: Simplificado para apenas receber os dados.
                     setData(newData) {
                         this.config.data = newData;
                         if (this.viewport) {
@@ -1657,15 +1666,17 @@
                     },
         
                     scrollToIndex(index) {
-                        const { itemHeight } = this.config;
-                        this.config.container.scrollTop = index * itemHeight;
+                        if (this.config.container) {
+                           this.config.container.scrollTop = index * this.config.itemHeight;
+                        }
                     },
         
-                    // ✅ ARQUITETURA FINAL: Simplificado, sem gerenciamento de URLs.
                     destroy() {
                         this.visibleItems.forEach(el => el.remove());
                         this.visibleItems.clear();
-                        this.config.container.innerHTML = '';
+                        if (this.config.container) {
+                            this.config.container.innerHTML = '';
+                        }
                     }
                 };
         
